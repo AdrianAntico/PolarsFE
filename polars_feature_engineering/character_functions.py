@@ -110,7 +110,7 @@ def categorical_encoding(
 
     Examples:
       # ----------------------------------------------------------------------------------
-      # Create fake Polars data to test the function using Polars for classification data
+      # Classification target version
       # ----------------------------------------------------------------------------------
       
       import os
@@ -191,7 +191,7 @@ def categorical_encoding(
       import polars as pl
       
       # ------------------------------------------------------------------------------
-      # Regression data version
+      # Regression target version
       # ------------------------------------------------------------------------------
       
       # Create a fake regression dataset
@@ -268,7 +268,7 @@ def categorical_encoding(
       import polars as pl
       
       # ------------------------------------------------------------------------------
-      # MultiClass version
+      # MultiClass target version
       # ------------------------------------------------------------------------------
       
       # Create a fake multiclass dataset
