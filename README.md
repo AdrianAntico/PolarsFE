@@ -24,7 +24,9 @@ pip install git+https://github.com/AdrianAntico/polars_feature_engineering.git#e
 
 # Code Examples
 
+
 <br>
+
 
 ## Character-Based Feature Engineering
 
@@ -53,6 +55,7 @@ print(levels_used)
 ```
 
 </details>
+
 
 <br>
 
@@ -294,6 +297,104 @@ else:
 
 print("\n--- James–Stein Encoding (Multiclass) Result Sample ---")
 print(encoded_df_js_multi.head())
+```
+
+</details>
+
+<br>
+
+## Numeric-Based Feature Engineering
+
+### Standardization
+
+<details><summary>Click for code example</summary>
+
+```python
+import numpy as np
+import polars as pl
+
+# Set seed for reproducibility
+np.random.seed(42)
+n = 100
+
+# Create a fake dataset with a grouping variable "Group" and two numeric variables.
+groups = np.random.choice(["A", "B", "C"], size=n)
+# Generate Value1 with different means per group.
+value1 = np.where(groups == "A", np.random.normal(50, 5, size=n),
+                  np.where(groups == "B", np.random.normal(60, 5, size=n),
+                           np.random.normal(70, 5, size=n)))
+# Generate Value2 as a normally distributed variable.
+value2 = np.random.normal(100, 10, size=n)
+
+df = pl.DataFrame({
+    "Group": groups,
+    "Value1": value1,
+    "Value2": value2
+})
+
+print("=== Original Dataset ===")
+print(df.head())
+
+# -------------------------------
+# TRAINING MODE: Compute standardization parameters by Group
+# -------------------------------
+# This call computes group-wise means and standard deviations for Value1 and Value2,
+# creates standardized columns, and returns a score table.
+transformed_train, score_tbl = standardize(
+    data=df,
+    col_names=["Value1", "Value2"],
+    group_vars=["Group"],
+    center=True,
+    scale=True,
+    score_table=True,
+    mode="train",
+    debug=True
+)
+
+print("\n=== Transformed Training Data ===")
+print(transformed_train.head())
+
+print("\n=== Score Table (Group-wise Means and SDs) ===")
+print(score_tbl)
+
+# -------------------------------
+# APPLICATION MODE: Apply standardization to new data using the score table
+# -------------------------------
+# Here we simulate new data by cloning the original dataset.
+# The new data does not have the standardized columns.
+new_data = df.clone()
+
+transformed_apply = standardize(
+    data=new_data,
+    col_names=["Value1", "Value2"],
+    group_vars=["Group"],
+    center=True,
+    scale=True,
+    mode="apply",
+    score_table_data=score_tbl,
+    debug=True
+)
+
+print("\n=== Transformed New Data (Standardized) ===")
+print(transformed_apply.head())
+
+# -------------------------------
+# BACKTRANSFORMATION MODE: Reverse the standardization on the new data
+# -------------------------------
+# This reverses the standardized values back to their original scale.
+backtransformed = standardize(
+    data=transformed_apply,
+    col_names=["Value1", "Value2"],
+    group_vars=["Group"],
+    center=True,
+    scale=True,
+    mode="backtransform",
+    score_table_data=score_tbl,
+    debug=True
+)
+
+print("\n=== Backtransformed Data (Reversed Standardization) ===")
+print(backtransformed.head())
 ```
 
 </details>
