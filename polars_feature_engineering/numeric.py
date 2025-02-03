@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional, Union, Tuple, Dict
 import polars as pl
 
@@ -246,3 +247,244 @@ def standardize(
                 return data
 
 
+def perc_rank(
+    data: pl.DataFrame,
+    col_names: List[str],
+    group_vars: Optional[List[str]] = None,
+    granularity: float = 0.001,
+    mode: str = "train",  # "train", "apply", or "backtransform"
+    score_table_data: Optional[pl.DataFrame] = None,
+    roll_direction: str = "forward",
+    score_table: bool = False,
+    debug: bool = False,
+) -> Union[pl.DataFrame, Tuple[pl.DataFrame, pl.DataFrame]]:
+    """
+    Generate percent ranks for specified columns in a Polars DataFrame.
+    
+    In **training mode** (mode=="train"), for each column in `col_names` the function computes
+    the percent rank as:
+    
+        PercRank = (rank(x) / N)
+    
+    where N is the number of rows (or the group size, if grouping is applied). The result is then
+    rounded to a number of decimals determined by the `granularity` parameter (e.g. granularity=0.001
+    yields 3 decimals). The new column is named "<col>_PercRank". If `score_table` is True, the function
+    also returns a score table containing the unique mappings (and, if grouping is used, the group columns)
+    of the original values and their computed percent ranks.
+    
+    In **apply mode** (mode=="apply"), the function takes new data along with a previously generated
+    score table (passed via `score_table_data`) and uses an asof join (with a specified roll direction)
+    to assign the appropriate percent rank to each row.
+    
+    In **backtransform mode** (mode=="backtransform"), the function uses the provided score table
+    to reverse the transformation. Given a percent rank (in a column named "<col>_PercRank"), an asof join
+    is performed to look up the corresponding original value.
+    
+    Parameters:
+      data (pl.DataFrame): Input DataFrame.
+      col_names (List[str]): List of numeric column names for which to compute percent ranks.
+      group_vars (Optional[List[str]]): Optional grouping columns. If provided, percent ranks are computed
+                                          within each group.
+      granularity (float): Granularity for rounding the percent rank (e.g. 0.001 rounds to 3 decimals).
+      mode (str): One of "train", "apply", or "backtransform".
+      score_table_data (Optional[pl.DataFrame]): In "apply" or "backtransform" mode, the score table generated during training.
+      roll_direction (str): For "apply" or "backtransform" modes, the rolling join strategy ("forward", "backward", or "nearest").
+      score_table (bool): In training mode, if True the function returns a tuple (transformed_data, score_table).
+      debug (bool): If True, print debug information.
+    
+    Returns:
+      - In training mode with score_table=True: Tuple[pl.DataFrame, pl.DataFrame] where the first element is the
+        DataFrame with new percent rank columns and the second is the score table.
+      - Otherwise, returns a single pl.DataFrame.
+    
+    Examples:
+      import numpy as np
+      import polars as pl
+      
+      # Set seed for reproducibility
+      np.random.seed(42)
+      n = 100
+      
+      # Create a fake dataset with:
+      # - A grouping variable "Group" (levels: "A", "B", "C")
+      # - Two numeric columns "Value1" and "Value2"
+      groups = np.random.choice(["A", "B", "C"], size=n)
+      value1 = np.random.normal(50, 10, size=n)
+      value2 = np.random.normal(100, 20, size=n)
+      
+      df = pl.DataFrame({
+          "Group": groups,
+          "Value1": value1,
+          "Value2": value2
+      })
+      
+      print("=== Original Training Data ===")
+      print(df.head())
+      
+      # --------------
+      # TRAINING MODE: Compute percent ranks by Group for Value1 and Value2.
+      # --------------
+      transformed_train, score_tbl = perc_rank(
+          data=df,
+          col_names=["Value1", "Value2"],
+          group_vars=["Group"],
+          granularity=0.001,
+          mode="train",
+          score_table=True,
+          debug=True
+      )
+      
+      print("\n=== Transformed Training Data with Percent Ranks ===")
+      print(transformed_train.head())
+      
+      print("\n=== Score Table ===")
+      print(score_tbl)
+      
+      # --------------
+      # APPLY MODE: Use the score table to assign percent ranks to new data.
+      # --------------
+      # Simulate new data.
+      new_groups = np.random.choice(["A", "B", "C"], size=n)
+      new_value1 = np.random.normal(50, 10, size=n)
+      new_value2 = np.random.normal(100, 20, size=n)
+      new_df = pl.DataFrame({
+          "Group": new_groups,
+          "Value1": new_value1,
+          "Value2": new_value2
+      })
+      
+      print("\n=== Original New Data ===")
+      print(new_df.head())
+      
+      transformed_new = perc_rank(
+          data=new_df,
+          col_names=["Value1", "Value2"],
+          group_vars=["Group"],
+          granularity=0.001,
+          mode="apply",
+          score_table_data=score_tbl,
+          roll_direction="nearest",
+          debug=True
+      )
+      
+      print("\n=== Transformed New Data with Percent Ranks (Applied) ===")
+      print(transformed_new.head())
+      
+      # --------------
+      # BACKTRANSFORM MODE: Reverse the percent rank transformation to recover original values.
+      # --------------
+      # For demonstration, use the new data with percent rank columns (from the apply mode).
+      backtransformed = perc_rank(
+          data=transformed_new,
+          col_names=["Value1", "Value2"],
+          group_vars=["Group"],
+          granularity=0.001,
+          mode="backtransform",
+          score_table_data=score_tbl,
+          roll_direction="nearest",
+          debug=True
+      )
+      
+      print("\n=== Backtransformed Data (Recovered Original Values) ===")
+      print(backtransformed.head())
+    """
+
+    # Determine the number of decimals to round to based on granularity.
+    decimals = int(-math.log10(granularity)) if granularity < 1 else 0
+
+    if mode not in {"train", "apply", "backtransform"}:
+        raise ValueError("mode must be one of 'train', 'apply', or 'backtransform'")
+
+    # --------------------------
+    # TRAINING MODE: Compute percent ranks.
+    # --------------------------
+    if mode == "train":
+        if not group_vars or len(group_vars) == 0:
+            N = data.height
+            for col in col_names:
+                data = data.with_columns(
+                    ((pl.col(col).rank("ordinal") / N).round(decimals)).alias(f"{col}_PercRank")
+                )
+        else:
+            for col in col_names:
+                data = data.with_columns(
+                    ((pl.col(col).rank("ordinal").over(group_vars) / pl.len().over(group_vars)).round(decimals))
+                    .alias(f"{col}_PercRank")
+                )
+        if score_table:
+            if not group_vars or len(group_vars) == 0:
+                score_tbl = data.select(col_names + [f"{col}_PercRank" for col in col_names]).unique()
+            else:
+                score_tbl = data.select(group_vars + col_names + [f"{col}_PercRank" for col in col_names]).unique()
+            if debug:
+                print("Score Table:")
+                print(score_tbl)
+            return data, score_tbl
+        else:
+            return data
+
+    # --------------------------
+    # APPLY MODE: Use score table to assign percent ranks.
+    # --------------------------
+    elif mode == "apply":
+        if score_table_data is None:
+            raise ValueError("In apply mode, score_table_data must be provided.")
+        new_data = data
+        for col in col_names:
+            key = col  # join key is the original column value
+            perc_col = f"{col}_PercRank"
+            if not group_vars or len(group_vars) == 0:
+                new_data = new_data.sort(key)
+                score_tbl_col = score_table_data.select([key, perc_col]).sort(key)
+                new_data = new_data.join_asof(
+                    score_tbl_col,
+                    left_on=key,
+                    right_on=key,
+                    strategy=roll_direction.lower(),
+                )
+            else:
+                sort_keys = group_vars + [key]
+                new_data = new_data.sort(sort_keys)
+                score_tbl_col = score_table_data.select(group_vars + [key, perc_col]).sort(sort_keys)
+                new_data = new_data.join_asof(
+                    score_tbl_col,
+                    left_on=key,
+                    right_on=key,
+                    by=group_vars,
+                    strategy=roll_direction.lower(),
+                )
+        return new_data
+
+    # --------------------------
+    # BACKTRANSFORM MODE: Reverse the percent rank transformation.
+    # --------------------------
+    elif mode == "backtransform":
+        if score_table_data is None:
+            raise ValueError("In backtransform mode, score_table_data must be provided.")
+        new_data = data
+        for col in col_names:  # col = col_names[0]
+            key = f"{col}_PercRank"  # now we join on the percent rank column
+            # The score table is assumed to have both the original column (col) and the corresponding percent rank.
+            if not group_vars or len(group_vars) == 0:
+                new_data = new_data.sort(key)
+                score_tbl_col = score_table_data.select([col, key]).sort(key)
+                new_data = new_data.join_asof(
+                    score_tbl_col,
+                    left_on=key,
+                    right_on=key,
+                    strategy=roll_direction.lower(),
+                )
+            else:
+                sort_keys = group_vars + [key]
+                new_data = new_data.sort(sort_keys)
+                score_tbl_col = score_table_data.select(group_vars + [col, key]).sort(sort_keys)
+                new_data = new_data.join_asof(
+                    score_tbl_col,
+                    left_on=key,
+                    right_on=key,
+                    by=group_vars,
+                    strategy=roll_direction.lower(),
+                )
+        # Optionally, drop the percent rank columns.
+        new_data = new_data.drop([f"{col}_PercRank" for col in col_names])
+        return new_data

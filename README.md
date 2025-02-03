@@ -398,3 +398,106 @@ print(backtransformed.head())
 ```
 
 </details>
+
+
+<br>
+
+
+### Percent Rank
+
+<details><summary>Click for code example</summary>
+
+```python
+import numpy as np
+import polars as pl
+
+# Set seed for reproducibility
+np.random.seed(42)
+n = 100
+
+# Create a fake dataset with:
+# - A grouping variable "Group" (levels: "A", "B", "C")
+# - Two numeric columns "Value1" and "Value2"
+groups = np.random.choice(["A", "B", "C"], size=n)
+value1 = np.random.normal(50, 10, size=n)
+value2 = np.random.normal(100, 20, size=n)
+
+df = pl.DataFrame({
+    "Group": groups,
+    "Value1": value1,
+    "Value2": value2
+})
+
+print("=== Original Training Data ===")
+print(df.head())
+
+# --------------
+# TRAINING MODE: Compute percent ranks by Group for Value1 and Value2.
+# --------------
+transformed_train, score_tbl = perc_rank(
+    data=df,
+    col_names=["Value1", "Value2"],
+    group_vars=["Group"],
+    granularity=0.001,
+    mode="train",
+    score_table=True,
+    debug=True
+)
+
+print("\n=== Transformed Training Data with Percent Ranks ===")
+print(transformed_train.head())
+
+print("\n=== Score Table ===")
+print(score_tbl)
+
+# --------------
+# APPLY MODE: Use the score table to assign percent ranks to new data.
+# --------------
+# Simulate new data.
+new_groups = np.random.choice(["A", "B", "C"], size=n)
+new_value1 = np.random.normal(50, 10, size=n)
+new_value2 = np.random.normal(100, 20, size=n)
+new_df = pl.DataFrame({
+    "Group": new_groups,
+    "Value1": new_value1,
+    "Value2": new_value2
+})
+
+print("\n=== Original New Data ===")
+print(new_df.head())
+
+transformed_new = perc_rank(
+    data=new_df,
+    col_names=["Value1", "Value2"],
+    group_vars=["Group"],
+    granularity=0.001,
+    mode="apply",
+    score_table_data=score_tbl,
+    roll_direction="nearest",
+    debug=True
+)
+
+print("\n=== Transformed New Data with Percent Ranks (Applied) ===")
+print(transformed_new.head())
+
+# --------------
+# BACKTRANSFORM MODE: Reverse the percent rank transformation to recover original values.
+# --------------
+# For demonstration, use the new data with percent rank columns (from the apply mode).
+backtransformed = perc_rank(
+    data=transformed_new,
+    col_names=["Value1", "Value2"],
+    group_vars=["Group"],
+    granularity=0.001,
+    mode="backtransform",
+    score_table_data=score_tbl,
+    roll_direction="nearest",
+    debug=True
+)
+
+print("\n=== Backtransformed Data (Recovered Original Values) ===")
+print(backtransformed.head())
+
+```
+
+</details>
