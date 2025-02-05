@@ -488,3 +488,245 @@ def perc_rank(
         # Optionally, drop the percent rank columns.
         new_data = new_data.drop([f"{col}_PercRank" for col in col_names])
         return new_data
+
+
+def _back_col_name(col: str, trans: str) -> str:
+    """
+    If the given column name ends with '_{trans}', remove that suffix;
+    then return f"{base}_{trans}_back".
+    """
+    suffix = f"_{trans}"
+    if col.lower().endswith(suffix):
+        base = col[:-len(suffix)]
+    else:
+        base = col
+    return f"{base}_{trans}_back"
+
+
+def numeric_transform(
+    data: pl.DataFrame,
+    col_names: List[str],
+    transformation: str,
+    mode: str = "apply",  # "apply" for forward transformation, "backtransform" for inverse
+    A: Optional[float] = None,
+    debug: bool = False,
+    modify_original: bool = False,
+) -> pl.DataFrame:
+    """
+    Apply or backtransform numeric transformations on specified columns of a Polars DataFrame.
+    
+    Supported transformations (the transformation parameter is case-insensitive):
+    
+      - "Asinh":  
+          Forward:  y = asinh(x) = log(x + sqrt(x² + 1))
+          Inverse:  x = sinh(y)
+      
+      - "Log":  
+          Forward:  y = log(x)
+          Inverse:  x = exp(y)
+      
+      - "LogPlusA":  
+          Forward:  y = log(x + A)  
+          A is chosen so that (x + A) ≥ 1. In apply mode, if A is None, then for each column 
+                   A is computed as A = max(0, 1 - min(x)).
+          Inverse:  x = exp(y) - A
+      
+      - "Sqrt":  
+          Forward:  y = sqrt(x)
+          Inverse:  x = y²
+      
+      - "Asin":  
+          Forward:  y = arcsin(x)  (x must be in [-1,1])
+          Inverse:  x = sin(y)
+      
+      - "Logit":  
+          Forward:  y = log( x / (1-x) )  (x must be in (0,1))
+          Inverse:  x = exp(y) / (1 + exp(y))
+    
+    Parameters:
+      data (pl.DataFrame): Input DataFrame.
+      col_names (List[str]): List of column names to transform.
+         • In "apply" mode these are the original columns.
+         • In "backtransform" mode, these should be the names of the forward‑transformed columns.
+      transformation (str): The transformation to apply (one of the supported names).
+      mode (str): "apply" to perform the forward transformation,
+                  "backtransform" to compute the inverse transformation.
+      A (Optional[float]): Constant to add for LogPlusA. If None (in apply mode),
+                           A is computed for each column as max(0, 1 - min(x)).
+      debug (bool): If True, print debug information.
+      modify_original (bool): If True, the transformation is applied in place (i.e., the original column is modified).
+                                If False, a new column is created for the transformation.
+    
+    Returns:
+      A Polars DataFrame with the transformed columns.
+      
+      • In "apply" mode:
+         - If modify_original is False, for each original column `col` a new column named 
+           `"{col}_{transformation_lowercase}"` is created.
+         - If modify_original is True, the original column is replaced with its transformed values.
+      • In "backtransform" mode:
+         - If modify_original is False, for each column in `col_names` (which should be the transformed columns)
+           a new column named `"{original}_{transformation_lowercase}_back"` is created, where `original`
+           is derived by removing the transformation suffix from the supplied name (if present).
+         - If modify_original is True, the original transformed column is replaced with the backtransformed values.
+    
+    Examples:
+      import numpy as np
+      import polars as pl
+      
+      # Create a fake dataset.
+      np.random.seed(42)
+      n = 10
+      df = pl.DataFrame({
+          "Positive": np.random.uniform(5, 100, size=n),    # for BoxCox, Log, LogPlusA, Sqrt
+          "AnyValue": np.random.uniform(-50, 50, size=n),     # for YeoJohnson
+          "Angle": np.random.uniform(-1, 1, size=n),          # for Asin (input should be in [-1,1])
+          "Probability": np.random.uniform(0.01, 0.99, size=n)  # for Logit (values in (0,1))
+      })
+      
+      print("=== Original Data ===")
+      print(df)
+      
+      # --------------------------
+      # Log Transformation
+      # --------------------------
+      df_log = numeric_transform(df, col_names=["Positive"], transformation="Log", mode="apply", debug=True)
+      print("\n=== Log Applied ===")
+      print(df_log.select(["Positive", "Positive_log"]))
+      
+      df_log_back = numeric_transform(df_log, col_names=["Positive_log"], transformation="Log", mode="backtransform", debug=True)
+      print("\n=== Log Backtransformed ===")
+      print(df_log_back.select(["Positive_log", "Positive_log_back"]))
+      
+      # --------------------------
+      # LogPlusA Transformation
+      # --------------------------
+      df_logplusa = numeric_transform(df, col_names=["Positive"], transformation="LogPlusA", mode="apply", A=None, debug=True)
+      print("\n=== LogPlusA Applied ===")
+      print(df_logplusa.select(["Positive", "Positive_logplusa"]))
+      
+      # For backtransformation, you must supply the same A. Compute it from the original column.
+      min_val = df.select(pl.col("Positive")).min().item()
+      A_val = max(1, 1 - min_val)
+      df_logplusa_back = numeric_transform(df_logplusa, col_names=["Positive_logplusa"], transformation="LogPlusA", mode="backtransform", A=A_val, debug=True)
+      print("\n=== LogPlusA Backtransformed ===")
+      print(df_logplusa_back.select(["Positive_logplusa", "Positive_logplusa_back"]))
+      
+      # --------------------------
+      # Sqrt Transformation
+      # --------------------------
+      df_sqrt = numeric_transform(df, col_names=["Positive"], transformation="Sqrt", mode="apply", debug=True)
+      print("\n=== Sqrt Applied ===")
+      print(df_sqrt.select(["Positive", "Positive_sqrt"]))
+      
+      df_sqrt_back = numeric_transform(df_sqrt, col_names=["Positive_sqrt"], transformation="Sqrt", mode="backtransform", debug=True)
+      print("\n=== Sqrt Backtransformed ===")
+      print(df_sqrt_back.select(["Positive_sqrt", "Positive_sqrt_back"]))
+      
+      # --------------------------
+      # Asin Transformation
+      # --------------------------
+      df_asin = numeric_transform(df, col_names=["Angle"], transformation="Asin", mode="apply", debug=True)
+      print("\n=== Asin Applied ===")
+      print(df_asin.select(["Angle", "Angle_asin"]))
+      
+      df_asin_back = numeric_transform(df_asin, col_names=["Angle"], transformation="Asin", mode="backtransform", debug=True)
+      print("\n=== Asin Backtransformed ===")
+      print(df_asin_back.select(["Angle_asin", "Angle_asin_back"]))
+      
+      # --------------------------
+      # Logit Transformation
+      # --------------------------
+      df_logit = numeric_transform(df, col_names=["Probability"], transformation="Logit", mode="apply", debug=True)
+      print("\n=== Logit Applied ===")
+      print(df_logit.select(["Probability", "Probability_logit"]))
+      
+      df_logit_back = numeric_transform(df_logit, col_names=["Probability"], transformation="Logit", mode="backtransform", debug=True)
+      print("\n=== Logit Backtransformed ===")
+      print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
+
+    """
+    # Work on a clone so the original data remains unchanged.
+    data = data.clone()
+    trans = transformation.lower()
+    
+    for col in col_names:
+        if trans == "log":
+            if mode == "apply":
+                new_expr = pl.col(col).log()
+                new_col_name = f"{col}_log"
+            elif mode == "backtransform":
+                new_expr = pl.col(col).exp()
+                new_col_name = _back_col_name(col, "log")
+            else:
+                raise ValueError("mode must be 'apply' or 'backtransform'")
+        
+        elif trans == "logplusa":
+            if mode == "apply":
+                if A is None:
+                    min_val = data.select(pl.col(col)).min().item()
+                    a_val = max(1, 1 - min_val)
+                else:
+                    a_val = A
+                if debug:
+                    print(f"For column {col}, LogPlusA constant A = {a_val}")
+                # Only add a_val if it is negative; otherwise, leave the value unchanged.
+                if a_val < 0:
+                    new_expr = (pl.col(col) + a_val).log()
+                else:
+                    new_expr = pl.col(col).log()
+                new_col_name = f"{col}_logplusa"
+                
+            elif mode == "backtransform":
+                if A is None:
+                    raise ValueError("A must be provided for backtransformation of LogPlusA")
+                else:
+                    a_val = A
+                # Only remove a_val (i.e., subtract it) if it is negative; otherwise, just take the exponential.
+                if a_val < 0:
+                    new_expr = pl.col(col).exp() - a_val
+                else:
+                    new_expr = pl.col(col).exp()
+                new_col_name = _back_col_name(col, "logplusa")
+                
+            else:
+                raise ValueError("mode must be 'apply' or 'backtransform'")
+        
+        elif trans == "sqrt":
+            if mode == "apply":
+                new_expr = pl.col(col).sqrt()
+                new_col_name = f"{col}_sqrt"
+            elif mode == "backtransform":
+                new_expr = pl.col(col) ** 2
+                new_col_name = _back_col_name(col, "sqrt")
+            else:
+                raise ValueError("mode must be 'apply' or 'backtransform'")
+        
+        elif trans == "asin":
+            if mode == "apply":
+                new_expr = pl.col(col).asin()
+                new_col_name = f"{col}_asin"
+            elif mode == "backtransform":
+                new_expr = pl.col(col).sin()
+                new_col_name = _back_col_name(col, "asin")
+            else:
+                raise ValueError("mode must be 'apply' or 'backtransform'")
+        
+        elif trans == "logit":
+            if mode == "apply":
+                new_expr = (pl.col(col) / (1 - pl.col(col))).log()
+                new_col_name = f"{col}_logit"
+            elif mode == "backtransform":
+                new_expr = pl.col(col).exp() / (1 + pl.col(col).exp())
+                new_col_name = _back_col_name(col, "logit")
+            else:
+                raise ValueError("mode must be 'apply' or 'backtransform'")
+        
+        else:
+            raise ValueError(f"Transformation '{transformation}' is not supported.")
+        
+        # Decide whether to overwrite the original column or create a new one.
+        target_col = col if modify_original else new_col_name
+        data = data.with_columns(new_expr.alias(target_col))
+    
+    return data

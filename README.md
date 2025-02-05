@@ -38,7 +38,7 @@ pip install git+https://github.com/AdrianAntico/polars_feature_engineering.git#e
 df = pl.DataFrame({
     "Category": ["A", "B", "A", "C", "B", "C", "A", "B", "D"],
     "Color": ["Red", "Blue", "Green", "Red", "Green", "Blue", "Red", "Red", "Green"],
-            "Value": [10, 20, 30, 40, 50, 60, 70, 80, 90]  # Numeric column (won't be affected)
+    "Value": [10, 20, 30, 40, 50, 60, 70, 80, 90]  # Numeric column (won't be affected)
 })
         
 # Create dummies for 'Category' and 'Color' and keep the original columns
@@ -55,9 +55,6 @@ print(levels_used)
 ```
 
 </details>
-
-
-<br>
 
 
 ### Categorical Encoding
@@ -301,7 +298,9 @@ print(encoded_df_js_multi.head())
 
 </details>
 
+
 <br>
+
 
 ## Numeric-Based Feature Engineering
 
@@ -400,9 +399,6 @@ print(backtransformed.head())
 </details>
 
 
-<br>
-
-
 ### Percent Rank
 
 <details><summary>Click for code example</summary>
@@ -498,6 +494,89 @@ backtransformed = perc_rank(
 print("\n=== Backtransformed Data (Recovered Original Values) ===")
 print(backtransformed.head())
 
+```
+
+</details>
+
+
+### Numeric Transformations
+
+<details><summary>Click for code example</summary>
+
+```python
+import numpy as np
+import polars as pl
+
+# Create a fake dataset.
+np.random.seed(42)
+n = 10
+df = pl.DataFrame({
+    "Positive": np.random.uniform(5, 100, size=n),    # for BoxCox, Log, LogPlusA, Sqrt
+    "AnyValue": np.random.uniform(-50, 50, size=n),     # for YeoJohnson
+    "Angle": np.random.uniform(-1, 1, size=n),          # for Asin (input should be in [-1,1])
+    "Probability": np.random.uniform(0.01, 0.99, size=n)  # for Logit (values in (0,1))
+})
+
+print("=== Original Data ===")
+print(df)
+
+# --------------------------
+# Log Transformation
+# --------------------------
+df_log = numeric_transform(df, col_names=["Positive"], transformation="Log", mode="apply", debug=True)
+print("\n=== Log Applied ===")
+print(df_log.select(["Positive", "Positive_log"]))
+
+df_log_back = numeric_transform(df_log, col_names=["Positive_log"], transformation="Log", mode="backtransform", debug=True)
+print("\n=== Log Backtransformed ===")
+print(df_log_back.select(["Positive_log", "Positive_log_back"]))
+
+# --------------------------
+# LogPlusA Transformation
+# --------------------------
+df_logplusa = numeric_transform(df, col_names=["Positive"], transformation="LogPlusA", mode="apply", A=None, debug=True)
+print("\n=== LogPlusA Applied ===")
+print(df_logplusa.select(["Positive", "Positive_logplusa"]))
+
+# For backtransformation, you must supply the same A. Compute it from the original column.
+min_val = df.select(pl.col("Positive")).min().item()
+A_val = max(1, 1 - min_val)
+df_logplusa_back = numeric_transform(df_logplusa, col_names=["Positive_logplusa"], transformation="LogPlusA", mode="backtransform", A=A_val, debug=True)
+print("\n=== LogPlusA Backtransformed ===")
+print(df_logplusa_back.select(["Positive_logplusa", "Positive_logplusa_back"]))
+
+# --------------------------
+# Sqrt Transformation
+# --------------------------
+df_sqrt = numeric_transform(df, col_names=["Positive"], transformation="Sqrt", mode="apply", debug=True)
+print("\n=== Sqrt Applied ===")
+print(df_sqrt.select(["Positive", "Positive_sqrt"]))
+
+df_sqrt_back = numeric_transform(df_sqrt, col_names=["Positive_sqrt"], transformation="Sqrt", mode="backtransform", debug=True)
+print("\n=== Sqrt Backtransformed ===")
+print(df_sqrt_back.select(["Positive_sqrt", "Positive_sqrt_back"]))
+
+# --------------------------
+# Asin Transformation
+# --------------------------
+df_asin = numeric_transform(df, col_names=["Angle"], transformation="Asin", mode="apply", debug=True)
+print("\n=== Asin Applied ===")
+print(df_asin.select(["Angle", "Angle_asin"]))
+
+df_asin_back = numeric_transform(df_asin, col_names=["Angle"], transformation="Asin", mode="backtransform", debug=True)
+print("\n=== Asin Backtransformed ===")
+print(df_asin_back.select(["Angle_asin", "Angle_asin_back"]))
+
+# --------------------------
+# Logit Transformation
+# --------------------------
+df_logit = numeric_transform(df, col_names=["Probability"], transformation="Logit", mode="apply", debug=True)
+print("\n=== Logit Applied ===")
+print(df_logit.select(["Probability", "Probability_logit"]))
+
+df_logit_back = numeric_transform(df_logit, col_names=["Probability"], transformation="Logit", mode="backtransform", debug=True)
+print("\n=== Logit Backtransformed ===")
+print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 ```
 
 </details>
