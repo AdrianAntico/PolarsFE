@@ -2,7 +2,7 @@ import polars as pl
 from typing import List, Optional, Union, Dict, Any
 
 
-def create_dummy_variables(
+def dummy_variables(
     df: pl.DataFrame, 
     columns: list[str], 
     levels: dict[str, list] = None, 
@@ -26,6 +26,9 @@ def create_dummy_variables(
         dict[str, list]: (Optional) Dictionary with selected category levels per column.
     
     Example:
+        from polars_feature_engineering import dummy_variables
+        import polars as pl
+        
         df = pl.DataFrame({
             "Category": ["A", "B", "A", "C", "B", "C", "A", "B", "D"],
             "Color": ["Red", "Blue", "Green", "Red", "Green", "Blue", "Red", "Red", "Green"],
@@ -33,7 +36,7 @@ def create_dummy_variables(
         })
         
         # Create dummies for 'Category' and 'Color' and keep the original columns
-        df_dummies, levels_used = create_dummy_variables(
+        df_dummies, levels_used = dummy_variables(
             df,
             columns=["Category", "Color"],
             levels=None,  # {"Category": ["A","B","G"], "Color": ["Red","Blue"]},
@@ -116,6 +119,7 @@ def categorical_encoding(
       import os
       import numpy as np
       import polars as pl
+      from polars_feature_engineering import categorical_encoding
       
       # Set a seed for reproducibility
       np.random.seed(42)

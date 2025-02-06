@@ -52,6 +52,7 @@ def standardize(
     Examples:
       import numpy as np
       import polars as pl
+      from polars_feature_engineering import standardize
       
       # Set seed for reproducibility
       np.random.seed(42)
@@ -248,7 +249,7 @@ def standardize(
                 return data
 
 
-def perc_rank(
+def percent_rank(
     data: pl.DataFrame,
     col_names: List[str],
     group_vars: Optional[List[str]] = None,
@@ -301,6 +302,7 @@ def perc_rank(
     Examples:
       import numpy as np
       import polars as pl
+      from polars_feature_engineering import percent_rank
       
       # Set seed for reproducibility
       np.random.seed(42)
@@ -325,7 +327,7 @@ def perc_rank(
       # --------------
       # TRAINING MODE: Compute percent ranks by Group for Value1 and Value2.
       # --------------
-      transformed_train, score_tbl = perc_rank(
+      transformed_train, score_tbl = percent_rank(
           data=df,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -357,7 +359,7 @@ def perc_rank(
       print("\n=== Original New Data ===")
       print(new_df.head())
       
-      transformed_new = perc_rank(
+      transformed_new = percent_rank(
           data=new_df,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -375,7 +377,7 @@ def perc_rank(
       # BACKTRANSFORM MODE: Reverse the percent rank transformation to recover original values.
       # --------------
       # For demonstration, use the new data with percent rank columns (from the apply mode).
-      backtransformed = perc_rank(
+      backtransformed = percent_rank(
           data=transformed_new,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -561,6 +563,7 @@ def numeric_transform(
     Examples:
       import numpy as np
       import polars as pl
+      from polars_feature_engineering import numeric_transform
       
       # Create a fake dataset.
       np.random.seed(42)

@@ -35,6 +35,9 @@ pip install git+https://github.com/AdrianAntico/polars_feature_engineering.git#e
 <details><summary>Click for code example</summary>
 
 ```python
+from polars_feature_engineering import dummy_variables
+import polars as pl
+
 df = pl.DataFrame({
     "Category": ["A", "B", "A", "C", "B", "C", "A", "B", "D"],
     "Color": ["Red", "Blue", "Green", "Red", "Green", "Blue", "Red", "Red", "Green"],
@@ -42,7 +45,7 @@ df = pl.DataFrame({
 })
         
 # Create dummies for 'Category' and 'Color' and keep the original columns
-df_dummies, levels_used = create_dummy_variables(
+df_dummies, levels_used = dummy_variables(
     df,
     columns=["Category", "Color"],
     levels=None,  # {"Category": ["A","B","G"], "Color": ["Red","Blue"]},
@@ -69,6 +72,7 @@ print(levels_used)
 import os
 import numpy as np
 import polars as pl
+from polars_feature_engineering import categorical_encoding
 
 # Set a seed for reproducibility
 np.random.seed(42)
@@ -311,6 +315,7 @@ print(encoded_df_js_multi.head())
 ```python
 import numpy as np
 import polars as pl
+from polars_feature_engineering import standardize
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -406,6 +411,7 @@ print(backtransformed.head())
 ```python
 import numpy as np
 import polars as pl
+from polars_feature_engineering import percent_rank
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -430,7 +436,7 @@ print(df.head())
 # --------------
 # TRAINING MODE: Compute percent ranks by Group for Value1 and Value2.
 # --------------
-transformed_train, score_tbl = perc_rank(
+transformed_train, score_tbl = percent_rank(
     data=df,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -462,7 +468,7 @@ new_df = pl.DataFrame({
 print("\n=== Original New Data ===")
 print(new_df.head())
 
-transformed_new = perc_rank(
+transformed_new = percent_rank(
     data=new_df,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -480,7 +486,7 @@ print(transformed_new.head())
 # BACKTRANSFORM MODE: Reverse the percent rank transformation to recover original values.
 # --------------
 # For demonstration, use the new data with percent rank columns (from the apply mode).
-backtransformed = perc_rank(
+backtransformed = percent_rank(
     data=transformed_new,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -506,6 +512,7 @@ print(backtransformed.head())
 ```python
 import numpy as np
 import polars as pl
+from polars_feature_engineering import numeric_transform
 
 # Create a fake dataset.
 np.random.seed(42)
