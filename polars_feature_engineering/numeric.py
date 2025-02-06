@@ -2,6 +2,7 @@ import math
 from typing import List, Optional, Union, Tuple, Dict
 import polars as pl
 
+
 def standardize(
     data: pl.DataFrame,
     col_names: List[str],
@@ -490,19 +491,6 @@ def perc_rank(
         return new_data
 
 
-def _back_col_name(col: str, trans: str) -> str:
-    """
-    If the given column name ends with '_{trans}', remove that suffix;
-    then return f"{base}_{trans}_back".
-    """
-    suffix = f"_{trans}"
-    if col.lower().endswith(suffix):
-        base = col[:-len(suffix)]
-    else:
-        base = col
-    return f"{base}_{trans}_back"
-
-
 def numeric_transform(
     data: pl.DataFrame,
     col_names: List[str],
@@ -646,10 +634,25 @@ def numeric_transform(
       print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 
     """
+
     # Work on a clone so the original data remains unchanged.
     data = data.clone()
     trans = transformation.lower()
-    
+
+    # Define helper function
+    def _back_col_name(col: str, trans: str) -> str:
+        """
+        If the given column name ends with '_{trans}', remove that suffix;
+        then return f"{base}_{trans}_back".
+        """
+        suffix = f"_{trans}"
+        if col.lower().endswith(suffix):
+            base = col[:-len(suffix)]
+        else:
+            base = col
+        return f"{base}_{trans}_back"
+
+    # Create transformation
     for col in col_names:
         if trans == "log":
             if mode == "apply":
