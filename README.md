@@ -1,22 +1,22 @@
-![PyPI](https://img.shields.io/pypi/v/polars_feature_engineering?label=pypi%20package)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/polars_feature_engineering)
-![Build + Test](https://github.com/AdrianAntico/polars_feature_engineering/actions/workflows/python-package.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/PolarsFE?label=pypi%20package)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/PolarsFE)
+![Build + Test](https://github.com/AdrianAntico/PolarsFE/actions/workflows/python-package.yml/badge.svg)
 
-# polars_feature_engineering
+# PolarsFE
 
-![](https://github.com/AdrianAntico/polars_feature_engineering/raw/main/polars_feature_engineering/Images/Logo.PNG)
+![](https://github.com/AdrianAntico/PolarsFE/raw/main/PolarsFE/Images/Logo.PNG)
 
-polars_feature_engineering is a Python package that enables one to plot Echarts quickly. It piggybacks off of the pyecharts package that pipes into Apache Echarts. Pyecharts is a great package for fully customizing plots but is quite a challenge to make use of quickly. polars_feature_engineering solves this with a simple API for defining plotting elements and data, along with automatic data wrangling operations, using polars, to correctly structure data fast.
+PolarsFE is a Python package that enables one to plot Echarts quickly. It piggybacks off of the pyecharts package that pipes into Apache Echarts. Pyecharts is a great package for fully customizing plots but is quite a challenge to make use of quickly. PolarsFE solves this with a simple API for defining plotting elements and data, along with automatic data wrangling operations, using polars, to correctly structure data fast.
 
-For the Code Examples below, there is a dataset in the polars_feature_engineering/datasets folder named FakeBevData.csv that you can download for replication purposes.
+For the Code Examples below, there is a dataset in the PolarsFE/datasets folder named FakeBevData.csv that you can download for replication purposes.
 
 # Installation
 ```bash
-pip install polars_feature_engineering
+pip install PolarsFE
 
 or 
 
-pip install git+https://github.com/AdrianAntico/polars_feature_engineering.git#egg=polars_feature_engineering
+pip install git+https://github.com/AdrianAntico/PolarsFE.git#egg=PolarsFE
 ```
 
 <br>
@@ -35,7 +35,7 @@ pip install git+https://github.com/AdrianAntico/polars_feature_engineering.git#e
 <details><summary>Click for code example</summary>
 
 ```python
-from polars_feature_engineering import dummy_variables
+from PolarsFE import dummy_variables
 import polars as pl
 
 df = pl.DataFrame({
@@ -72,7 +72,7 @@ print(levels_used)
 import os
 import numpy as np
 import polars as pl
-from polars_feature_engineering import categorical_encoding
+from PolarsFE import categorical_encoding
 
 # Set a seed for reproducibility
 np.random.seed(42)
@@ -315,7 +315,7 @@ print(encoded_df_js_multi.head())
 ```python
 import numpy as np
 import polars as pl
-from polars_feature_engineering import standardize
+from PolarsFE import standardize
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -411,7 +411,7 @@ print(backtransformed.head())
 ```python
 import numpy as np
 import polars as pl
-from polars_feature_engineering import percent_rank
+from PolarsFE import percent_rank
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -512,7 +512,7 @@ print(backtransformed.head())
 ```python
 import numpy as np
 import polars as pl
-from polars_feature_engineering import numeric_transform
+from PolarsFE import numeric_transform
 
 # Create a fake dataset.
 np.random.seed(42)
