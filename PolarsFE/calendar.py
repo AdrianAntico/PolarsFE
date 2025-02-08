@@ -126,38 +126,50 @@ def cyclic_features(
       pl.DataFrame: The DataFrame with new sine and cosine columns appended for each cyclic feature.
     
     Example:
-      from PolarsFE import calendar
-
-      # Create a sample DataFrame with calendar features.
+      from PolarsFE import calendar  # Assumes both functions are in the "calendar" module
+      import datetime
+      
+      # Create a sample DataFrame with a date column.
       df = pl.DataFrame({
-          "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04"],
-          "date_day_of_week": [6, 0, 1, 2],  # e.g., Saturday=6, Sunday=0, Monday=1, Tuesday=2
-          "date_month": [1, 1, 1, 1]
+          "date": [
+              datetime.date(2023, 1, 1),
+              datetime.date(2023, 1, 2),
+              datetime.date(2023, 1, 3),
+              datetime.date(2023, 1, 4)
+          ],
+          "value": [10, 20, 30, 40]
       })
       
       print("=== Original DataFrame ===")
       print(df)
       
-      # Transform the cyclic features "date_day_of_week" and "date_month".
-      df_transformed = calendar.cyclic_features(
-          data=df,
+      # Step 1: Compute calendar features.
+      # For example, here we extract "day_of_week" and "month". The resulting columns will be named
+      # "date_day_of_week" and "date_month".
+      df_cal = calendar.calendar_features(data=df, date_col="date", features=["day_of_week", "month"])
+      print("\n=== DataFrame with Calendar Features ===")
+      print(df_cal)
+      
+      # Step 2: Transform the cyclic features.
+      # Now, use the cyclic_features function to transform "date_day_of_week" and "date_month" into sine and cosine components.
+      df_cyclic = calendar.cyclic_features(
+          data=df_cal,
           date_col="date",
           columns=["date_day_of_week", "date_month"],
           drop_original=False
       )
-      
       print("\n=== DataFrame with Transformed Cyclic Features ===")
-      print(df_transformed)
+      print(df_cyclic)
       
-      # Optionally, drop the original columns.
-      df_transformed_drop = calendar.cyclic_features(
-          data=df,
+      # Optionally, if you wish to drop the original cyclic feature columns after transformation:
+      df_cyclic_drop = calendar.cyclic_features(
+          data=df_cal,
           date_col="date",
           columns=["date_day_of_week", "date_month"],
           drop_original=True
       )
       print("\n=== DataFrame with Transformed Cyclic Features (Originals Dropped) ===")
-      print(df_transformed_drop)
+      print(df_cyclic_drop)
     """
 
     if prefix is None:
