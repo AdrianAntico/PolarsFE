@@ -4,9 +4,7 @@
 
 ![](https://github.com/AdrianAntico/PolarsFE/raw/main/PolarsFE/Images/Logo.PNG)
 
-PolarsFE is a Python package that enables one to plot Echarts quickly. It piggybacks off of the pyecharts package that pipes into Apache Echarts. Pyecharts is a great package for fully customizing plots but is quite a challenge to make use of quickly. PolarsFE solves this with a simple API for defining plotting elements and data, along with automatic data wrangling operations, using polars, to correctly structure data fast.
-
-For the Code Examples below, there is a dataset in the PolarsFE/datasets folder named FakeBevData.csv that you can download for replication purposes.
+PolarsFE is a Python package 
 
 # Installation
 ```bash
@@ -33,7 +31,7 @@ pip install git+https://github.com/AdrianAntico/PolarsFE.git#egg=PolarsFE
 <details><summary>Click for code example</summary>
 
 ```python
-from PolarsFE import dummy_variables
+from PolarsFE import character
 import polars as pl
 
 df = pl.DataFrame({
@@ -43,7 +41,7 @@ df = pl.DataFrame({
 })
         
 # Create dummies for 'Category' and 'Color' and keep the original columns
-df_dummies, levels_used = dummy_variables(
+df_dummies, levels_used = character.dummy_variables(
     df,
     columns=["Category", "Color"],
     levels=None,  # {"Category": ["A","B","G"], "Color": ["Red","Blue"]},
@@ -70,7 +68,7 @@ print(levels_used)
 import os
 import numpy as np
 import polars as pl
-from PolarsFE import categorical_encoding
+from PolarsFE import character
 
 # Set a seed for reproducibility
 np.random.seed(42)
@@ -98,7 +96,7 @@ factor_columns = [f"Factor_{i}" for i in range(1, num_factors + 1)]
 
 # --- Test Target Encoding ---
 print("\n=== Testing Target Encoding ===")
-result_target = categorical_encoding(
+result_target = character.categorical_encoding(
     data=df,
     ML_Type="classification",
     group_variables=factor_columns,
@@ -120,7 +118,7 @@ print(encoded_df_target.head())
 
 # --- Test James–Stein Encoding ---
 print("\n=== Testing James–Stein Encoding ===")
-result_js = categorical_encoding(
+result_js = character.categorical_encoding(
     data=df,
     ML_Type="classification",
     group_variables=factor_columns,
@@ -174,7 +172,7 @@ factor_columns = [f"Factor_{i}" for i in range(1, num_factors + 1)]
 
 # --- Test Target Encoding for Regression ---
 print("\n=== Testing Target Encoding for Regression ===")
-result_target_reg = categorical_encoding(
+result_target_reg = character.categorical_encoding(
     data=df_reg,
     ML_Type="regression",
     group_variables=factor_columns,
@@ -197,7 +195,7 @@ print(encoded_df_target_reg.head())
 
 # --- Test James–Stein Encoding for Regression ---
 print("\n=== Testing James–Stein Encoding for Regression ===")
-result_js_reg = categorical_encoding(
+result_js_reg = character.categorical_encoding(
     data=df_reg,
     ML_Type="regression",
     group_variables=factor_columns,
@@ -254,7 +252,7 @@ factor_columns = [f"Factor_{i}" for i in range(1, num_factors + 1)]
 
 # --- Test Target Encoding for Multiclass ---
 print("\n=== Testing Target Encoding for Multiclass ===")
-result_target_multi = categorical_encoding(
+result_target_multi = character.categorical_encoding(
     data=df_multi,
     ML_Type="multiclass",
     group_variables=factor_columns,
@@ -277,7 +275,7 @@ print(encoded_df_target_multi.head())
 
 # --- Test James–Stein Encoding for Multiclass ---
 print("\n=== Testing James–Stein Encoding for Multiclass ===")
-result_js_multi = categorical_encoding(
+result_js_multi = character.categorical_encoding(
     data=df_multi,
     ML_Type="multiclass",
     group_variables=factor_columns,
@@ -313,7 +311,7 @@ print(encoded_df_js_multi.head())
 ```python
 import numpy as np
 import polars as pl
-from PolarsFE import standardize
+from PolarsFE import numeric
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -342,7 +340,7 @@ print(df.head())
 # -------------------------------
 # This call computes group-wise means and standard deviations for Value1 and Value2,
 # creates standardized columns, and returns a score table.
-transformed_train, score_tbl = standardize(
+transformed_train, score_tbl = numeric.standardize(
     data=df,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -366,7 +364,7 @@ print(score_tbl)
 # The new data does not have the standardized columns.
 new_data = df.clone()
 
-transformed_apply = standardize(
+transformed_apply = numeric.standardize(
     data=new_data,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -384,7 +382,7 @@ print(transformed_apply.head())
 # BACKTRANSFORMATION MODE: Reverse the standardization on the new data
 # -------------------------------
 # This reverses the standardized values back to their original scale.
-backtransformed = standardize(
+backtransformed = numeric.standardize(
     data=transformed_apply,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -409,7 +407,7 @@ print(backtransformed.head())
 ```python
 import numpy as np
 import polars as pl
-from PolarsFE import percent_rank
+from PolarsFE import numeric
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -434,7 +432,7 @@ print(df.head())
 # --------------
 # TRAINING MODE: Compute percent ranks by Group for Value1 and Value2.
 # --------------
-transformed_train, score_tbl = percent_rank(
+transformed_train, score_tbl = numeric.percent_rank(
     data=df,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -466,7 +464,7 @@ new_df = pl.DataFrame({
 print("\n=== Original New Data ===")
 print(new_df.head())
 
-transformed_new = percent_rank(
+transformed_new = numeric.percent_rank(
     data=new_df,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -484,7 +482,7 @@ print(transformed_new.head())
 # BACKTRANSFORM MODE: Reverse the percent rank transformation to recover original values.
 # --------------
 # For demonstration, use the new data with percent rank columns (from the apply mode).
-backtransformed = percent_rank(
+backtransformed = numeric.percent_rank(
     data=transformed_new,
     col_names=["Value1", "Value2"],
     group_vars=["Group"],
@@ -510,7 +508,7 @@ print(backtransformed.head())
 ```python
 import numpy as np
 import polars as pl
-from PolarsFE import numeric_transform
+from PolarsFE import numeric
 
 # Create a fake dataset.
 np.random.seed(42)
@@ -528,58 +526,118 @@ print(df)
 # --------------------------
 # Log Transformation
 # --------------------------
-df_log = numeric_transform(df, col_names=["Positive"], transformation="Log", mode="apply", debug=True)
+df_log = numeric.numeric_transform(
+    df,
+    col_names=["Positive"],
+    transformation="Log",
+    mode="apply", debug=True
+)
 print("\n=== Log Applied ===")
 print(df_log.select(["Positive", "Positive_log"]))
 
-df_log_back = numeric_transform(df_log, col_names=["Positive_log"], transformation="Log", mode="backtransform", debug=True)
+df_log_back = numeric.numeric_transform(
+    df_log,
+    col_names=["Positive_log"],
+    transformation="Log",
+    mode="backtransform", debug=True
+)
 print("\n=== Log Backtransformed ===")
 print(df_log_back.select(["Positive_log", "Positive_log_back"]))
 
 # --------------------------
 # LogPlusA Transformation
 # --------------------------
-df_logplusa = numeric_transform(df, col_names=["Positive"], transformation="LogPlusA", mode="apply", A=None, debug=True)
+df_logplusa = numeric.numeric_transform(
+    df,
+    col_names=["Positive"],
+    transformation="LogPlusA",
+    mode="apply",
+    A=None,
+    debug=True
+)
 print("\n=== LogPlusA Applied ===")
 print(df_logplusa.select(["Positive", "Positive_logplusa"]))
 
 # For backtransformation, you must supply the same A. Compute it from the original column.
 min_val = df.select(pl.col("Positive")).min().item()
 A_val = max(1, 1 - min_val)
-df_logplusa_back = numeric_transform(df_logplusa, col_names=["Positive_logplusa"], transformation="LogPlusA", mode="backtransform", A=A_val, debug=True)
+df_logplusa_back = numeric.numeric_transform(
+    df_logplusa,
+    col_names=["Positive_logplusa"],
+    transformation="LogPlusA",
+    mode="backtransform",
+    A=A_val,
+    debug=True
+)
 print("\n=== LogPlusA Backtransformed ===")
 print(df_logplusa_back.select(["Positive_logplusa", "Positive_logplusa_back"]))
 
 # --------------------------
 # Sqrt Transformation
 # --------------------------
-df_sqrt = numeric_transform(df, col_names=["Positive"], transformation="Sqrt", mode="apply", debug=True)
+df_sqrt = numeric.numeric_transform(
+    df,
+    col_names=["Positive"],
+    transformation="Sqrt",
+    mode="apply",
+    debug=True
+)
 print("\n=== Sqrt Applied ===")
 print(df_sqrt.select(["Positive", "Positive_sqrt"]))
 
-df_sqrt_back = numeric_transform(df_sqrt, col_names=["Positive_sqrt"], transformation="Sqrt", mode="backtransform", debug=True)
+df_sqrt_back = numeric.numeric_transform(
+    df_sqrt,
+    col_names=["Positive_sqrt"],
+    transformation="Sqrt",
+    mode="backtransform",
+    debug=True
+)
 print("\n=== Sqrt Backtransformed ===")
 print(df_sqrt_back.select(["Positive_sqrt", "Positive_sqrt_back"]))
 
 # --------------------------
 # Asin Transformation
 # --------------------------
-df_asin = numeric_transform(df, col_names=["Angle"], transformation="Asin", mode="apply", debug=True)
+df_asin = numeric.numeric_transform(
+    df,
+    col_names=["Angle"],
+    transformation="Asin",
+    mode="apply",
+    debug=True
+)
 print("\n=== Asin Applied ===")
 print(df_asin.select(["Angle", "Angle_asin"]))
 
-df_asin_back = numeric_transform(df_asin, col_names=["Angle"], transformation="Asin", mode="backtransform", debug=True)
+df_asin_back = numeric.numeric_transform(
+    df_asin,
+    col_names=["Angle"],
+    transformation="Asin",
+    mode="backtransform",
+    debug=True
+)
 print("\n=== Asin Backtransformed ===")
 print(df_asin_back.select(["Angle_asin", "Angle_asin_back"]))
 
 # --------------------------
 # Logit Transformation
 # --------------------------
-df_logit = numeric_transform(df, col_names=["Probability"], transformation="Logit", mode="apply", debug=True)
+df_logit = numeric.numeric_transform(
+    df,
+    col_names=["Probability"],
+    transformation="Logit",
+    mode="apply",
+    debug=True
+)
 print("\n=== Logit Applied ===")
 print(df_logit.select(["Probability", "Probability_logit"]))
 
-df_logit_back = numeric_transform(df_logit, col_names=["Probability"], transformation="Logit", mode="backtransform", debug=True)
+df_logit_back = numeric.numeric_transform(
+    df_logit,
+    col_names=["Probability"],
+    transformation="Logit",
+    mode="backtransform",
+    debug=True
+)
 print("\n=== Logit Backtransformed ===")
 print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 ```
@@ -609,14 +667,23 @@ print(df.head(10))
 print(f"Total rows: {df.height}\\n")
 
 # Partition into 3 equally sized parts with seed=42.
-parts_equal = partition_random(data=df, num_partitions=3, seed=42)
+parts_equal = datasets.partition_random(
+    data=df,
+    num_partitions=3,
+    seed=42
+)
 for idx, part in enumerate(parts_equal, start=1):
     print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
     print(part)
     print()
 
 # Partition into 3 parts using percentages (30%, 30%, 40%).
-parts_pct = partition_random(data=df, num_partitions=3, seed=42, percentages=[0.3, 0.3, 0.4])
+parts_pct = datasets.partition_random(
+    data=df,
+    num_partitions=3,
+    seed=42,
+    percentages=[0.3, 0.3, 0.4]
+)
 for idx, part in enumerate(parts_pct, start=1):
     print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
     print(part)
@@ -642,13 +709,22 @@ df = pl.DataFrame({
 })
 
 # Partition into 4 equal time intervals.
-parts_equal = partition_time(df, time_col="date", num_partitions=4)
+parts_equal = datasets.partition_time(
+    df,
+    time_col="date",
+    num_partitions=4
+)
 for idx, part in enumerate(parts_equal, start=1):
     print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
     print(part)
 
 # Partition into 4 parts using percentages: 10%, 20%, 30%, 40%.
-parts_pct = partition_time(df, time_col="date", num_partitions=4, percentages=[0.1, 0.2, 0.3, 0.4])
+parts_pct = datasets.partition_time(
+    df,
+    time_col="date",
+    num_partitions=4,
+    percentages=[0.1, 0.2, 0.3, 0.4]
+)
 for idx, part in enumerate(parts_pct, start=1):
     print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
     print(part)
@@ -679,7 +755,12 @@ print(f"Total rows: {df.height}\n")
 
 # --- Test 1: Equal-Time Partitions ---
 print("=== Equal-Time Partitions ===")
-parts_equal = partition_timeseries(df, time_col="date", panel_vars=["panel"], num_partitions=4)
+parts_equal = datasets.partition_timeseries(
+    df,
+    time_col="date",
+    panel_vars=["panel"],
+    num_partitions=4
+)
 for idx, part in enumerate(parts_equal, start=1):
     print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
     print(part)
@@ -688,7 +769,13 @@ for idx, part in enumerate(parts_equal, start=1):
 # --- Test 2: Percentage-Based Partitions ---
 # For example, partition into 4 parts using percentages [0.1, 0.2, 0.3, 0.4].
 print("=== Percentage-Based Partitions ===")
-parts_pct = partition_timeseries(df, time_col="date", panel_vars=["panel"], num_partitions=4, percentages=[0.1, 0.2, 0.3, 0.4])
+parts_pct = datasets.partition_timeseries(
+    df,
+    time_col="date",
+    panel_vars=["panel"],
+    num_partitions=4,
+    percentages=[0.1, 0.2, 0.3, 0.4]
+)
 for idx, part in enumerate(parts_pct, start=1):
     print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
     print(part)
@@ -719,7 +806,7 @@ print(df.head(10))
 print(f"Total rows: {df.height}\n")
 
 # Test 1: Stratified sampling on a single column ("panel").
-sample_df = stratified_sample(df, stratify_by="panel", frac=0.2)
+sample_df = datasets.stratified_sample(df, stratify_by="panel", frac=0.2)
 print("=== Stratified Sample (20% from each panel) ===")
 print(sample_df)
 print(f"Sample rows: {sample_df.height}\n")
@@ -736,7 +823,7 @@ print("=== Original Dataset with Multiple Stratification Columns ===")
 print(df2.head(10))
 print(f"Total rows: {df2.height}\n")
 
-sample_df2 = stratified_sample(df2, stratify_by=["group", "region"], frac=0.15)
+sample_df2 = datasets.stratified_sample(df2, stratify_by=["group", "region"], frac=0.15)
 print("=== Stratified Sample with 'group' and 'region' (15% from each stratum) ===")
 print(sample_df2)
 print(f"Sample rows: {sample_df2.height}")
@@ -760,29 +847,122 @@ df = pl.DataFrame({
 })
 
 # Constant imputation for columns A and B with 0.
-imputed_const = impute_missing(df, method="constant", value=0, columns=["A", "B"])
+imputed_const = datasets.impute_missing(
+    df,
+    method="constant",
+    value=0,
+    columns=["A", "B"]
+)
 
 # Global mean imputation for numeric columns A and B.
-imputed_mean = impute_missing(df, method="mean", columns=["A", "B"])
+imputed_mean = datasets.impute_missing(
+    df,
+    method="mean",
+    columns=["A", "B"]
+)
 
 # Group-based median imputation for columns A and B.
-imputed_median_group = impute_missing(df, method="median", columns=["A", "B"], group_vars=["group"])
+imputed_median_group = datasets.impute_missing(
+    df,
+    method="median",
+    columns=["A", "B"],
+    group_vars=["group"]
+)
 
 # Forward-fill imputation globally.
-imputed_ffill = impute_missing(df, method="ffill")
+imputed_ffill = datasets.impute_missing(
+    df,
+    method="ffill"
+)
 
 # Group-based median imputation for columns A and B.
-imputed_median_group = impute_missing(df, method="median", columns=["A", "B"], group_vars=["group"])
-print("\n=== Group-Based Median Imputation for A and B ===")
-print(imputed_median_group)
+imputed_median_group = datasets.impute_missing(
+    df,
+    method="median",
+    columns=["A", "B"],
+    group_vars=["group"]
+)
 
 # Group-based forward fill imputation for all columns.
-imputed_ffill = impute_missing(df, method="ffill", group_vars=["group"])
-print("\n=== Group-Based Forward Fill Imputation ===")
-print(imputed_ffill)
+imputed_ffill = datasets.impute_missing(
+    df,
+    method="ffill",
+    group_vars=["group"]
+)
 ```
 
 </details>
 
 
 <br>
+
+
+## Calendar
+
+### calendar_variables
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import calendar
+import datetime
+
+# Create a fake dataset with a datetime column.
+dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(10)]
+df = pl.DataFrame({
+    "date": dates,
+    "value": [i * 10 for i in range(10)]
+})
+
+print("=== Original DataFrame ===")
+print(df)
+
+# Test 1: Only extract 'year', 'month', and 'day'.
+df_partial = calendar.calendar_features(df, "date", features=["year", "month", "day"])
+print("\n=== DataFrame with 'year', 'month', and 'day' Only ===")
+print(df_partial)
+```
+
+</details>
+
+
+### cyclic_features
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import calendar
+
+# Create a sample DataFrame with calendar features.
+df = pl.DataFrame({
+    "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04"],
+    "date_day_of_week": [6, 0, 1, 2],  # e.g., Saturday=6, Sunday=0, Monday=1, Tuesday=2
+    "date_month": [1, 1, 1, 1]
+})
+
+print("=== Original DataFrame ===")
+print(df)
+
+# Transform the cyclic features "date_day_of_week" and "date_month".
+df_transformed = calendar.cyclic_features(
+    data=df,
+    date_col="date",
+    columns=["date_day_of_week", "date_month"],
+    drop_original=False
+)
+
+print("\n=== DataFrame with Transformed Cyclic Features ===")
+print(df_transformed)
+
+# Optionally, drop the original columns.
+df_transformed_drop = calendar.cyclic_features(
+    data=df,
+    date_col="date",
+    columns=["date_day_of_week", "date_month"],
+    drop_original=True
+)
+print("\n=== DataFrame with Transformed Cyclic Features (Originals Dropped) ===")
+print(df_transformed_drop)
+```
+
+</details>
