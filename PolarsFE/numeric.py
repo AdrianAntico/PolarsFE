@@ -52,7 +52,7 @@ def standardize(
     Examples:
       import numpy as np
       import polars as pl
-      from polars_feature_engineering import standardize
+      from PolarsFE import numeric
       
       # Set seed for reproducibility
       np.random.seed(42)
@@ -81,7 +81,7 @@ def standardize(
       # -------------------------------
       # This call computes group-wise means and standard deviations for Value1 and Value2,
       # creates standardized columns, and returns a score table.
-      transformed_train, score_tbl = standardize(
+      transformed_train, score_tbl = numeric.standardize(
           data=df,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -105,7 +105,7 @@ def standardize(
       # The new data does not have the standardized columns.
       new_data = df.clone()
       
-      transformed_apply = standardize(
+      transformed_apply = numeric.standardize(
           data=new_data,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -123,7 +123,7 @@ def standardize(
       # BACKTRANSFORMATION MODE: Reverse the standardization on the new data
       # -------------------------------
       # This reverses the standardized values back to their original scale.
-      backtransformed = standardize(
+      backtransformed = numeric.standardize(
           data=transformed_apply,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -302,7 +302,7 @@ def percent_rank(
     Examples:
       import numpy as np
       import polars as pl
-      from polars_feature_engineering import percent_rank
+      from PolarsFE import numeric
       
       # Set seed for reproducibility
       np.random.seed(42)
@@ -327,7 +327,7 @@ def percent_rank(
       # --------------
       # TRAINING MODE: Compute percent ranks by Group for Value1 and Value2.
       # --------------
-      transformed_train, score_tbl = percent_rank(
+      transformed_train, score_tbl = numeric.percent_rank(
           data=df,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -359,7 +359,7 @@ def percent_rank(
       print("\n=== Original New Data ===")
       print(new_df.head())
       
-      transformed_new = percent_rank(
+      transformed_new = numeric.percent_rank(
           data=new_df,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -377,7 +377,7 @@ def percent_rank(
       # BACKTRANSFORM MODE: Reverse the percent rank transformation to recover original values.
       # --------------
       # For demonstration, use the new data with percent rank columns (from the apply mode).
-      backtransformed = percent_rank(
+      backtransformed = numeric.percent_rank(
           data=transformed_new,
           col_names=["Value1", "Value2"],
           group_vars=["Group"],
@@ -563,7 +563,7 @@ def numeric_transform(
     Examples:
       import numpy as np
       import polars as pl
-      from polars_feature_engineering import numeric_transform
+      from PolarsFE import numeric
       
       # Create a fake dataset.
       np.random.seed(42)
@@ -581,61 +581,120 @@ def numeric_transform(
       # --------------------------
       # Log Transformation
       # --------------------------
-      df_log = numeric_transform(df, col_names=["Positive"], transformation="Log", mode="apply", debug=True)
+      df_log = numeric.numeric_transform(
+          df,
+          col_names=["Positive"],
+          transformation="Log",
+          mode="apply", debug=True
+      )
       print("\n=== Log Applied ===")
       print(df_log.select(["Positive", "Positive_log"]))
       
-      df_log_back = numeric_transform(df_log, col_names=["Positive_log"], transformation="Log", mode="backtransform", debug=True)
+      df_log_back = numeric.numeric_transform(
+          df_log,
+          col_names=["Positive_log"],
+          transformation="Log",
+          mode="backtransform", debug=True
+      )
       print("\n=== Log Backtransformed ===")
       print(df_log_back.select(["Positive_log", "Positive_log_back"]))
       
       # --------------------------
       # LogPlusA Transformation
       # --------------------------
-      df_logplusa = numeric_transform(df, col_names=["Positive"], transformation="LogPlusA", mode="apply", A=None, debug=True)
+      df_logplusa = numeric.numeric_transform(
+          df,
+          col_names=["Positive"],
+          transformation="LogPlusA",
+          mode="apply",
+          A=None,
+          debug=True
+      )
       print("\n=== LogPlusA Applied ===")
       print(df_logplusa.select(["Positive", "Positive_logplusa"]))
       
       # For backtransformation, you must supply the same A. Compute it from the original column.
       min_val = df.select(pl.col("Positive")).min().item()
       A_val = max(1, 1 - min_val)
-      df_logplusa_back = numeric_transform(df_logplusa, col_names=["Positive_logplusa"], transformation="LogPlusA", mode="backtransform", A=A_val, debug=True)
+      df_logplusa_back = numeric.numeric_transform(
+          df_logplusa,
+          col_names=["Positive_logplusa"],
+          transformation="LogPlusA",
+          mode="backtransform",
+          A=A_val,
+          debug=True
+      )
       print("\n=== LogPlusA Backtransformed ===")
       print(df_logplusa_back.select(["Positive_logplusa", "Positive_logplusa_back"]))
       
       # --------------------------
       # Sqrt Transformation
       # --------------------------
-      df_sqrt = numeric_transform(df, col_names=["Positive"], transformation="Sqrt", mode="apply", debug=True)
+      df_sqrt = numeric.numeric_transform(
+          df,
+          col_names=["Positive"],
+          transformation="Sqrt",
+          mode="apply",
+          debug=True
+      )
       print("\n=== Sqrt Applied ===")
       print(df_sqrt.select(["Positive", "Positive_sqrt"]))
       
-      df_sqrt_back = numeric_transform(df_sqrt, col_names=["Positive_sqrt"], transformation="Sqrt", mode="backtransform", debug=True)
+      df_sqrt_back = numeric.numeric_transform(
+          df_sqrt,
+          col_names=["Positive_sqrt"],
+          transformation="Sqrt",
+          mode="backtransform",
+          debug=True
+      )
       print("\n=== Sqrt Backtransformed ===")
       print(df_sqrt_back.select(["Positive_sqrt", "Positive_sqrt_back"]))
       
       # --------------------------
       # Asin Transformation
       # --------------------------
-      df_asin = numeric_transform(df, col_names=["Angle"], transformation="Asin", mode="apply", debug=True)
+      df_asin = numeric.numeric_transform(
+          df,
+          col_names=["Angle"],
+          transformation="Asin",
+          mode="apply",
+          debug=True
+      )
       print("\n=== Asin Applied ===")
       print(df_asin.select(["Angle", "Angle_asin"]))
       
-      df_asin_back = numeric_transform(df_asin, col_names=["Angle"], transformation="Asin", mode="backtransform", debug=True)
+      df_asin_back = numeric.numeric_transform(
+          df_asin,
+          col_names=["Angle"],
+          transformation="Asin",
+          mode="backtransform",
+          debug=True
+      )
       print("\n=== Asin Backtransformed ===")
       print(df_asin_back.select(["Angle_asin", "Angle_asin_back"]))
       
       # --------------------------
       # Logit Transformation
       # --------------------------
-      df_logit = numeric_transform(df, col_names=["Probability"], transformation="Logit", mode="apply", debug=True)
+      df_logit = numeric.numeric_transform(
+          df,
+          col_names=["Probability"],
+          transformation="Logit",
+          mode="apply",
+          debug=True
+      )
       print("\n=== Logit Applied ===")
       print(df_logit.select(["Probability", "Probability_logit"]))
       
-      df_logit_back = numeric_transform(df_logit, col_names=["Probability"], transformation="Logit", mode="backtransform", debug=True)
+      df_logit_back = numeric.numeric_transform(
+          df_logit,
+          col_names=["Probability"],
+          transformation="Logit",
+          mode="backtransform",
+          debug=True
+      )
       print("\n=== Logit Backtransformed ===")
       print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
-
     """
 
     # Work on a clone so the original data remains unchanged.

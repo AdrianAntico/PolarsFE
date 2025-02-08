@@ -495,7 +495,6 @@ backtransformed = numeric.percent_rank(
 
 print("\n=== Backtransformed Data (Recovered Original Values) ===")
 print(backtransformed.head())
-
 ```
 
 </details>

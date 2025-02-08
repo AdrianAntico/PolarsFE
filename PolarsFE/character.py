@@ -14,38 +14,38 @@ def dummy_variables(
     Create dummy variables for specified columns in a Polars DataFrame with custom level selection.
     
     Parameters:
-        df (pl.DataFrame): The original dataframe.
-        columns (list[str]): The list of categorical columns to encode.
-        levels (dict[str, list], optional): Specific category levels to include per column.
-        top_n (dict[str, int], optional): The number of top frequent categories to encode.
-        keep_original (bool, optional): Whether to keep the original categorical columns. Default is False.
-        return_levels (bool, optional): Whether to return the selected category levels for reproducibility.
+      df (pl.DataFrame): The original dataframe.
+      columns (list[str]): The list of categorical columns to encode.
+      levels (dict[str, list], optional): Specific category levels to include per column.
+      top_n (dict[str, int], optional): The number of top frequent categories to encode.
+      keep_original (bool, optional): Whether to keep the original categorical columns. Default is False.
+      return_levels (bool, optional): Whether to return the selected category levels for reproducibility.
     
     Returns:
-        pl.DataFrame: The modified DataFrame with dummy variables.
-        dict[str, list]: (Optional) Dictionary with selected category levels per column.
+      pl.DataFrame: The modified DataFrame with dummy variables.
+      dict[str, list]: (Optional) Dictionary with selected category levels per column.
     
     Example:
-        from polars_feature_engineering import dummy_variables
-        import polars as pl
-        
-        df = pl.DataFrame({
-            "Category": ["A", "B", "A", "C", "B", "C", "A", "B", "D"],
-            "Color": ["Red", "Blue", "Green", "Red", "Green", "Blue", "Red", "Red", "Green"],
-            "Value": [10, 20, 30, 40, 50, 60, 70, 80, 90]  # Numeric column (won't be affected)
-        })
-        
-        # Create dummies for 'Category' and 'Color' and keep the original columns
-        df_dummies, levels_used = dummy_variables(
-            df,
-            columns=["Category", "Color"],
-            levels=None,  # {"Category": ["A","B","G"], "Color": ["Red","Blue"]},
-            top_n=None,  # {"Category": 2, "Color": 3},
-            keep_original=True,
-            return_levels=True)
-        
-        print(df_dummies)
-        print(levels_used)
+      from polars_feature_engineering import character
+      import polars as pl
+      
+      df = pl.DataFrame({
+          "Category": ["A", "B", "A", "C", "B", "C", "A", "B", "D"],
+          "Color": ["Red", "Blue", "Green", "Red", "Green", "Blue", "Red", "Red", "Green"],
+          "Value": [10, 20, 30, 40, 50, 60, 70, 80, 90]  # Numeric column (won't be affected)
+      })
+      
+      # Create dummies for 'Category' and 'Color' and keep the original columns
+      df_dummies, levels_used = character.dummy_variables(
+          df,
+          columns=["Category", "Color"],
+          levels=None,  # {"Category": ["A","B","G"], "Color": ["Red","Blue"]},
+          top_n=None,  # {"Category": 2, "Color": 3},
+          keep_original=True,
+          return_levels=True)
+      
+      print(df_dummies)
+      print(levels_used)
     """
     df = df.clone()  # Avoid modifying the original DataFrame
     selected_levels = {}  # Store selected levels for reproducibility
@@ -119,7 +119,7 @@ def categorical_encoding(
       import os
       import numpy as np
       import polars as pl
-      from polars_feature_engineering import categorical_encoding
+      from PolarsFE import character
       
       # Set a seed for reproducibility
       np.random.seed(42)
@@ -147,7 +147,7 @@ def categorical_encoding(
       
       # --- Test Target Encoding ---
       print("\n=== Testing Target Encoding ===")
-      result_target = categorical_encoding(
+      result_target = character.categorical_encoding(
           data=df,
           ML_Type="classification",
           group_variables=factor_columns,
@@ -169,7 +169,7 @@ def categorical_encoding(
       
       # --- Test James–Stein Encoding ---
       print("\n=== Testing James–Stein Encoding ===")
-      result_js = categorical_encoding(
+      result_js = character.categorical_encoding(
           data=df,
           ML_Type="classification",
           group_variables=factor_columns,
@@ -223,7 +223,7 @@ def categorical_encoding(
       
       # --- Test Target Encoding for Regression ---
       print("\n=== Testing Target Encoding for Regression ===")
-      result_target_reg = categorical_encoding(
+      result_target_reg = character.categorical_encoding(
           data=df_reg,
           ML_Type="regression",
           group_variables=factor_columns,
@@ -246,7 +246,7 @@ def categorical_encoding(
       
       # --- Test James–Stein Encoding for Regression ---
       print("\n=== Testing James–Stein Encoding for Regression ===")
-      result_js_reg = categorical_encoding(
+      result_js_reg = character.categorical_encoding(
           data=df_reg,
           ML_Type="regression",
           group_variables=factor_columns,
@@ -303,7 +303,7 @@ def categorical_encoding(
       
       # --- Test Target Encoding for Multiclass ---
       print("\n=== Testing Target Encoding for Multiclass ===")
-      result_target_multi = categorical_encoding(
+      result_target_multi = character.categorical_encoding(
           data=df_multi,
           ML_Type="multiclass",
           group_variables=factor_columns,
@@ -326,7 +326,7 @@ def categorical_encoding(
       
       # --- Test James–Stein Encoding for Multiclass ---
       print("\n=== Testing James–Stein Encoding for Multiclass ===")
-      result_js_multi = categorical_encoding(
+      result_js_multi = character.categorical_encoding(
           data=df_multi,
           ML_Type="multiclass",
           group_variables=factor_columns,
