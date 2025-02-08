@@ -20,13 +20,13 @@ pip install git+https://github.com/AdrianAntico/PolarsFE.git#egg=PolarsFE
 <br>
 
 
-# Code Examples
+# Feature Engineering Code Examples
 
 
 <br>
 
 
-## Character-Based Feature Engineering
+## Categorical
 
 ### Create Dummy Variables
 
@@ -304,7 +304,7 @@ print(encoded_df_js_multi.head())
 <br>
 
 
-## Numeric-Based Feature Engineering
+## Numeric
 
 ### Standardization
 
@@ -590,7 +590,7 @@ print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 <br>
 
 
-## Datasets Feature Engineering
+## Datasets
 
 ### partition_random
 
