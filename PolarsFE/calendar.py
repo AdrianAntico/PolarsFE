@@ -1,6 +1,8 @@
 import polars as pl
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import math
+import datetime
+import holidays
 
 
 def calendar_features(
@@ -60,7 +62,7 @@ def calendar_features(
     """
 
     if features is None:
-        raise Error("User needs to supply values for features parameter")
+        raise ValueError("User needs to supply values for features parameter")
 
     # Define a mapping from feature name to the corresponding Polars expression.
     feature_map = {
@@ -70,7 +72,7 @@ def calendar_features(
         "hour": pl.col(date_col).dt.hour(),
         "day": pl.col(date_col).dt.day(),
         "day_of_week": pl.col(date_col).dt.weekday(),
-        "is_weekend": (pl.col(date_col).dt.weekday() >= 5)
+        "is_weekend": (pl.col(date_col).dt.weekday() >= 5),
         "day_of_year": pl.col(date_col).dt.ordinal_day(),
         "week": pl.col(date_col).dt.week(),
         "week_of_month": ((pl.col(date_col).dt.day() - 1) // 7 + 1).cast(pl.Int64),
@@ -78,13 +80,15 @@ def calendar_features(
         "quarter": pl.col(date_col).dt.quarter(),
         "year": pl.col(date_col).dt.year(),
     }
-    
-    unsupported = [feat for feat in features if feat not in feature_map]
-    if unsupported:
-        raise ValueError(f"Unsupported features requested: {unsupported}")
 
+    # Compute the features on a DataFrame of unique dates.
+    unique_dates = data.select(date_col).unique()
     exprs = [feature_map[feat].alias(f"{date_col}_{feat}") for feat in features]
-    return data.with_columns(exprs)
+    unique_dates = unique_dates.with_columns(exprs)
+    
+    # Join the computed features back to the original DataFrame.
+    data_out = data.join(unique_dates, on=date_col, how="left")
+    return data_out
 
 
 def cyclic_features(
@@ -95,29 +99,31 @@ def cyclic_features(
     prefix: Optional[str] = None
 ) -> pl.DataFrame:
     """
-    Transform cyclic calendar features into sine and cosine components.
-    
-    The function assumes that calendar feature columns were created using a naming convention
-    in which the base date column name is prepended, followed by an underscore, and then the 
-    feature name. For example, if the date column is "date", then a calendar feature might be 
-    named "date_day_of_week". This function uses that prefix to extract the cyclic feature name 
-    (e.g. "day_of_week") and then uses a default mapping of feature names to periods to compute an angle:
-    
-        angle = 2π * value / period
-    
-    It then creates two new columns for each input column:
-      - "{original}_sin": the sine of the angle.
-      - "{original}_cos": the cosine of the angle.
-    
+    Transform cyclic calendar feature columns into sine and cosine components by computing the 
+    transformation on the unique values and then joining back to the original DataFrame.
+
+    The function assumes that each cyclic feature column follows a naming convention where the 
+    column name is prefixed with a base name (e.g., "date_") followed by the feature name (e.g., 
+    "day_of_week", "month", etc.). For each column, the function:
+      1. Extracts its unique values.
+      2. Infers the cyclic feature type by removing the prefix (if provided).
+      3. Looks up the default period for that feature.
+      4. Computes the angle as: angle = 2π * value / period.
+      5. Computes sine and cosine components from the angle.
+      6. Joins the computed sine and cosine columns back to the original DataFrame on the cyclic column.
+
+    If `drop_original` is True, the original cyclic feature column is removed.
+
     Parameters:
       data (pl.DataFrame): The input DataFrame.
-      date_col (str): The base date column name used to create calendar features.
-      columns (Optional[List[str]]): List of column names to transform. If None, all columns starting with "{prefix}" are used.
-      drop_original (bool): If True, drop the original cyclic feature columns after transformation.
-      prefix (Optional[str]): The prefix used in the calendar feature column names. Defaults to "{date_col}_".
+      columns (List[str]): A list of column names containing cyclic features (e.g., ["date_day_of_week", "date_month"]).
+      prefix (Optional[str]): The prefix to remove from the column name to infer the cyclic feature type.
+                              For example, if prefix is "date_", then "date_day_of_week" becomes "day_of_week".
+                              If None, the entire column name is used as the feature key.
+      drop_original (bool): Whether to drop the original cyclic feature columns after transformation.
     
     Returns:
-      pl.DataFrame: The DataFrame with new sine and cosine columns appended.
+      pl.DataFrame: The DataFrame with new sine and cosine columns appended for each cyclic feature.
     
     Example:
       from PolarsFE import calendar
@@ -174,26 +180,150 @@ def cyclic_features(
         "quarter": 4,
     }
 
-    new_exprs = []
+    df_out = data
     for col in columns:
-        if not col.startswith(prefix):
-            raise ValueError(f"Column '{col}' does not start with the expected prefix '{prefix}'.")
-        # Extract the cyclic feature from the column name by removing the prefix.
-        feature = col[len(prefix):]  # e.g. "day_of_week" from "date_day_of_week"
-        if feature not in default_periods:
-            raise ValueError(f"Feature '{feature}' (from column '{col}') is not supported. Supported features: {list(default_periods.keys())}")
-        period = default_periods[feature]
-        # Compute the angle: 2π * value / period.
-        angle_expr = (2 * math.pi * pl.col(col) / period)
-        sin_expr = angle_expr.sin().alias(f"{col}_sin")
-        cos_expr = angle_expr.cos().alias(f"{col}_cos")
-        new_exprs.extend([sin_expr, cos_expr])
-    
-    df_out = data.with_columns(new_exprs)
-    if drop_original:
-        df_out = df_out.drop(columns)
+        # Extract unique values for the column.
+        unique_vals_df = data.select(col).unique()
+        # Infer the cyclic feature by removing the prefix if provided.
+        if prefix:
+            if not col.startswith(prefix):
+                raise ValueError(f"Column '{col}' does not start with the expected prefix '{prefix}'.")
+            feature_type = col[len(prefix):]
+        else:
+            feature_type = col
+        if feature_type not in default_periods:
+            raise ValueError(f"Feature type '{feature_type}' (from column '{col}') is not supported. "
+                             f"Supported features: {list(default_periods.keys())}")
+        period = default_periods[feature_type]
+        # Compute the angle and then its sine and cosine.
+        # angle = (2 * π * value) / period
+        unique_vals_df = unique_vals_df.with_columns([
+            ((2 * math.pi * pl.col(col)) / period).sin().alias(f"{col}_sin"),
+            ((2 * math.pi * pl.col(col)) / period).cos().alias(f"{col}_cos")
+        ])
+        # Join the computed columns back to the original DataFrame on the given column.
+        df_out = df_out.join(unique_vals_df, on=col, how="left")
+        if drop_original:
+            df_out = df_out.drop(col)
+
     return df_out
 
 
+def holiday_features(
+    data: pl.DataFrame,
+    date_col: str,
+    country: str = "US",
+    years: Optional[List[int]] = None,
+    pre_window: int = 0,
+    post_window: int = 0,
+    add_holiday_name: bool = False
+) -> pl.DataFrame:
+    """
+    Add holiday-based features to a Polars DataFrame using the holidays library.
+    
+    For each row in the DataFrame (based on the date in `date_col`), this function computes:
+      - is_holiday: 1 if the date exactly matches a holiday, else 0.
+      - pre_holiday: 1 if the date is within `pre_window` days before a holiday, else 0.
+      - post_holiday: 1 if the date is within `post_window` days after a holiday, else 0.
+      - holiday_effect: 1 if any of the above flags is 1, else 0.
+    
+    Additionally, if `add_holiday_name` is True, the function adds a column `holiday_name` that
+    contains the holiday name for dates that are holidays, and None otherwise.
+    
+    The function uses the holidays library to generate holiday dates dynamically for the specified
+    country and for the years covering the date range in the data (if `years` is not supplied, the function
+    determines the years from the date column). Since many holidays (e.g. Martin Luther King Jr. Day,
+    Thanksgiving) do not fall on the same date each year, using the holidays library ensures that the holiday
+    dates are correct for the specified period.
+    
+    Parameters:
+      data (pl.DataFrame): The input DataFrame.
+      date_col (str): The name of the column containing date or datetime values.
+      country (str): The country for which to generate holidays (default "US").
+      years (Optional[List[int]]): A list of years for which to generate holidays. If None, the function
+                                   uses the year range from the data.
+      pre_window (int): Number of days before a holiday to flag as pre_holiday.
+      post_window (int): Number of days after a holiday to flag as post_holiday.
+      add_holiday_name (bool): If True, add a column "holiday_name" with the holiday name for dates that are holidays.
+    
+    Returns:
+      pl.DataFrame: The original DataFrame with additional columns:
+          - is_holiday
+          - pre_holiday
+          - post_holiday
+          - holiday_effect
+          - (optionally) holiday_name
+    
+    Examples:
+      from PolarsFE import calendar
+      import datetime
+      
+      # Option 1: Use dynamic holiday generation for the US.
+      df = pl.DataFrame({
+          "date": [datetime.date(2023, 1, 1) + datetime.timedelta(days=i) for i in range(-3, 5)]
+      })
+      df_holidays = calendar.holiday_features(df, date_col="date", pre_window=2, post_window=2, add_holiday_name=True)
+      print("=== DataFrame with Holiday Features (Dynamic Holidays) ===")
+      print(df_holidays)
+      
+      # Option 2: Supply specific years.
+      df2 = pl.DataFrame({
+          "date": [datetime.date(2022, 12, 30) + datetime.timedelta(days=i) for i in range(10)]
+      })
+      df2_holidays = calendar.holiday_features(df2, date_col="date", country="US", years=[2022, 2023], pre_window=1, post_window=1)
+      print("\n=== DataFrame with Holiday Features (Supplied Years) ===")
+      print(df2_holidays)
+    """
 
-
+    # Determine the years if not supplied.
+    # Extract the date column as a list of date objects.
+    date_series = data.select(pl.col(date_col)).to_series().to_list()
+    # Ensure they are datetime.date objects.
+    def to_date(x: Any) -> datetime.date:
+        if isinstance(x, datetime.datetime):
+            return x.date()
+        return x
+    date_list = [to_date(x) for x in date_series]
+    
+    if years is None:
+        min_year = min(d.year for d in date_list)
+        max_year = max(d.year for d in date_list)
+        years = list(range(min_year, max_year + 1))
+    
+    # Generate holidays using the holidays library.
+    holiday_obj = holidays.CountryHoliday(country, years=years)
+    # Build a dictionary mapping holiday dates to holiday names.
+    # The holidays library returns a dictionary-like object.
+    holiday_dict: Dict[datetime.date, str] = {date: name for date, name in sorted(holiday_obj.items())}
+    holiday_set = set(holiday_dict.keys())
+    
+    def holiday_flags(date_val: datetime.date) -> Dict[str, Any]:
+        # Compute differences in days between each holiday in the holiday_set and the date.
+        # (We iterate over holiday_set, which contains all holiday dates for the specified years.)
+        differences = [(h - date_val).days for h in holiday_set]
+        is_holiday = 1 if 0 in differences else 0
+        pre = 1 if any(1 <= d <= pre_window for d in differences) else 0
+        post = 1 if any(-post_window <= d <= -1 for d in differences) else 0
+        effect = max(is_holiday, pre, post)
+        # Optionally include holiday_name if this date is a holiday.
+        holiday_name = holiday_dict.get(date_val, None)
+        return {
+            "is_holiday": is_holiday,
+            "pre_holiday": pre,
+            "post_holiday": post,
+            "holiday_effect": effect,
+            "holiday_name": holiday_name
+        }
+    
+    # Create a DataFrame with unique dates.
+    unique_dates = data.select(date_col).unique()
+    unique_date_list = [to_date(x) for x in unique_dates[date_col].to_list()]
+    # Compute holiday flags for each unique date.
+    flags_list = [holiday_flags(d) for d in unique_date_list]
+    flags_df = pl.DataFrame(flags_list)
+    # Combine the unique dates and flags.
+    unique_dates = unique_dates.hstack(flags_df)
+    
+    # Join the holiday features back to the original DataFrame.
+    data_out = data.join(unique_dates, on=date_col, how="left")
+    return data_out

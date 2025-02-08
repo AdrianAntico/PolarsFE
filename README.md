@@ -965,3 +965,31 @@ print(df_transformed_drop)
 ```
 
 </details>
+
+
+### holiday_features
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import calendar
+import datetime
+
+# Option 1: Use dynamic holiday generation for the US.
+df = pl.DataFrame({
+    "date": [datetime.date(2023, 1, 1) + datetime.timedelta(days=i) for i in range(-3, 5)]
+})
+df_holidays = calendar.holiday_features(df, date_col="date", pre_window=2, post_window=2, add_holiday_name=True)
+print("=== DataFrame with Holiday Features (Dynamic Holidays) ===")
+print(df_holidays)
+
+# Option 2: Supply specific years.
+df2 = pl.DataFrame({
+    "date": [datetime.date(2022, 12, 30) + datetime.timedelta(days=i) for i in range(10)]
+})
+df2_holidays = calendar.holiday_features(df2, date_col="date", country="US", years=[2022, 2023], pre_window=1, post_window=1)
+print("\n=== DataFrame with Holiday Features (Supplied Years) ===")
+print(df2_holidays)
+```
+
+</details>
