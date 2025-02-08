@@ -374,7 +374,7 @@ def stratified_sample(
       print(f"Total rows: {df.height}\n")
       
       # Test 1: Stratified sampling on a single column ("panel").
-      sample_df = stratified_sample_window(df, stratify_by="panel", frac=0.2)
+      sample_df = stratified_sample(df, stratify_by="panel", frac=0.2)
       print("=== Stratified Sample (20% from each panel) ===")
       print(sample_df)
       print(f"Sample rows: {sample_df.height}\n")
@@ -391,7 +391,7 @@ def stratified_sample(
       print(df2.head(10))
       print(f"Total rows: {df2.height}\n")
       
-      sample_df2 = stratified_sample_window(df2, stratify_by=["group", "region"], frac=0.15)
+      sample_df2 = stratified_sample(df2, stratify_by=["group", "region"], frac=0.15)
       print("=== Stratified Sample with 'group' and 'region' (15% from each stratum) ===")
       print(sample_df2)
       print(f"Sample rows: {sample_df2.height}")
