@@ -649,7 +649,7 @@ print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 
 ## Datasets
 
-### partition_random
+### Partition Random
 
 <details><summary>Click for code example</summary>
 
@@ -692,7 +692,7 @@ print()
 </details>
 
 
-### partition_time
+### Partition Time
 
 <details><summary>Click for code example</summary>
 
@@ -732,7 +732,7 @@ for idx, part in enumerate(parts_pct, start=1):
 </details>
 
 
-### partition_timeseries
+### Partition Timeseries
 
 <details><summary>Click for code example</summary>
 
@@ -784,7 +784,7 @@ for idx, part in enumerate(parts_pct, start=1):
 </details>
 
 
-### stratified_sample
+### Stratified Sample
 
 <details><summary>Click for code example</summary>
 
@@ -831,7 +831,7 @@ print(f"Sample rows: {sample_df2.height}")
 </details>
 
 
-### impute_missing
+### Impute Missing Values
 
 <details><summary>Click for code example</summary>
 
@@ -898,7 +898,7 @@ imputed_ffill = datasets.impute_missing(
 
 ## Calendar
 
-### calendar_variables
+### Calendar Features
 
 <details><summary>Click for code example</summary>
 
@@ -925,7 +925,7 @@ print(df_partial)
 </details>
 
 
-### cyclic_features
+### Cyclic Features
 
 <details><summary>Click for code example</summary>
 
@@ -979,7 +979,7 @@ print(df_cyclic_drop)
 </details>
 
 
-### holiday_features
+### Holiday Features
 
 <details><summary>Click for code example</summary>
 
@@ -1012,7 +1012,7 @@ print(df2_holidays)
 
 ## Window
 
-### lags
+### Lags
 
 <details><summary>Click for code example</summary>
 
