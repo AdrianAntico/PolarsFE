@@ -77,12 +77,12 @@ def lags(
     return data_out
 
 
-
-def moving_averages(
+def rolling_features(
     data: pl.DataFrame,
     date_col: str,
     columns: List[str],
     window: Union[int, List[int]] = 3,
+    agg: str = "mean",
     group_vars: Optional[List[str]] = None,
     fill_value: Optional[Any] = None,
     is_sorted: bool = False,
@@ -90,29 +90,39 @@ def moving_averages(
     center: bool = False
 ) -> pl.DataFrame:
     """
-    Create moving average (simple moving average) features for specified columns in a Polars DataFrame.
-
-    The function optionally sorts the DataFrame by the date column (and grouping variables, if provided)
-    and then computes the moving average for each column over the specified window size(s). If group_vars are supplied,
-    the moving average is computed within each group.
-
+    Create rolling window (moving aggregate) features for specified columns in a Polars DataFrame.
+    
+    The function optionally sorts the DataFrame by the date column (and group variables, if provided)
+    and then computes the specified rolling aggregate for each column over the provided window size(s).
+    
+    Supported aggregation functions (case-insensitive) include:
+      - "mean": Rolling mean.
+      - "min": Rolling minimum.
+      - "max": Rolling maximum.
+      - "std": Rolling standard deviation.
+      - "sum": Rolling sum.
+    
     Parameters:
       data (pl.DataFrame): The input DataFrame.
       date_col (str): The name of the datetime column to sort by.
-      columns (List[str]): A list of column names for which to compute moving averages.
-      window (Union[int, List[int]]): A single window size or a list of window sizes (number of rows). Default is 3.
-      group_vars (Optional[List[str]]): A list of columns to group by. If provided, moving averages are computed within each group.
-      fill_value (Optional[Any]): If provided, missing values resulting from the rolling window will be filled with this value.
-      is_sorted (bool): If True, the function assumes data is already sorted; otherwise, it sorts by group_vars (if provided) and date_col.
-      min_samples (Optional[int]): Minimum number of observations in the window required to have a value. Default is 1.
-      center (bool): If True, the moving window is centered on each row. Default is False.
-
+      columns (List[str]): A list of numeric column names for which to compute rolling features.
+      window (Union[int, List[int]]): A single window size or a list of window sizes (in number of rows). Default is 3.
+      agg (str): The aggregation function to use ("mean", "min", "max", "std", "sum"). Default is "mean".
+      group_vars (Optional[List[str]]): If provided, the DataFrame is grouped by these columns and the rolling
+                                        calculation is done within each group.
+      fill_value (Optional[Any]): If provided, missing values produced by the rolling window are filled with this value.
+      is_sorted (bool): If True, the function assumes the DataFrame is already sorted by the date column (and group_vars).
+                        If False, the function sorts the DataFrame.
+      min_samples (Optional[int]): Minimum number of observations required in the window to have a value. Default is 1.
+      center (bool): If True, the window is centered on each row. Default is False.
+    
     Returns:
-      pl.DataFrame: The DataFrame with new moving average columns appended. Each new column is named "{column}_ma_{window}".
-
-    Examples:
+      pl.DataFrame: The input DataFrame with new rolling feature columns appended. Each new column is named
+                    "{column}_{agg}_rolling_{window}".
+    
+    Example:
       from PolarsFE import window
-
+      
       # Create a sample DataFrame.
       df = pl.DataFrame({
           "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05", "2023-01-06"],
@@ -123,39 +133,43 @@ def moving_averages(
       print("=== Original DataFrame ===")
       print(df)
       
-      # Example 1: Data is not pre-sorted; function will sort by store and date.
-      df_ma = window.moving_averages(
+      # Example 1: Compute rolling mean for "sales" with window sizes 2 and 3, grouped by "store".
+      df_roll_mean = window.rolling_features(
           data=df,
           date_col="date",
           columns=["sales"],
           window=[2, 3],
+          agg="mean",
           group_vars=["store"],
           fill_value=0,
-          is_sorted=False
+          is_sorted=False,
+          min_samples=1,
+          center=False
       )
-      print("\n=== DataFrame with Moving Averages (Sorting Performed) ===")
-      print(df_ma)
+      print("\n=== DataFrame with Rolling Mean Features ===")
+      print(df_roll_mean)
       
-      # Example 2: Data is already sorted.
-      df_sorted = df.sort(["store", "date"])
-      df_ma_sorted = window.moving_averages(
-          data=df_sorted,
+      # Example 2: Compute rolling standard deviation for "sales" with window size 3, grouped by "store".
+      df_roll_std = window.rolling_features(
+          data=df,
           date_col="date",
           columns=["sales"],
-          window=2,
+          window=3,
+          agg="std",
           group_vars=["store"],
           fill_value=0,
-          is_sorted=True
+          is_sorted=False,
+          min_samples=1,
+          center=False
       )
-      print("\n=== DataFrame with Moving Averages (Data Already Sorted) ===")
-      print(df_ma_sorted)
+      print("\n=== DataFrame with Rolling Standard Deviation Features ===")
+      print(df_roll_std)
     """
-
     # Ensure window is a list.
     if isinstance(window, int):
         window = [window]
-
-    # Sort the data if it is not already sorted.
+    
+    # Sort the DataFrame if not already sorted.
     if not is_sorted:
         if group_vars is not None:
             sort_cols = group_vars + [date_col]
@@ -163,16 +177,31 @@ def moving_averages(
             sort_cols = [date_col]
         data = data.sort(sort_cols)
     
-    ma_exprs = []
+    # Define a helper to get the rolling expression.
+    def get_rolling_expr(col: str, w: int) -> pl.Expr:
+        agg_lower = agg.lower()
+        if agg_lower == "mean":
+            expr = pl.col(col).rolling_mean(window_size=w, min_samples=min_samples, center=center)
+        elif agg_lower == "min":
+            expr = pl.col(col).rolling_min(window_size=w, min_samples=min_samples, center=center)
+        elif agg_lower == "max":
+            expr = pl.col(col).rolling_max(window_size=w, min_samples=min_samples, center=center)
+        elif agg_lower == "std":
+            expr = pl.col(col).rolling_std(window_size=w, min_samples=min_samples, center=center)
+        elif agg_lower == "sum":
+            expr = pl.col(col).rolling_sum(window_size=w, min_samples=min_samples, center=center)
+        else:
+            raise ValueError(f"Aggregation method '{agg}' is not supported.")
+        return expr
+
+    rolling_exprs = []
     for col in columns:
         for w in window:
-            # Compute the rolling (moving) mean with the given window size.
-            expr = pl.col(col).rolling_mean(window_size=w, min_samples=min_samples, center=center)
-            # If grouping variables are provided, compute the rolling mean over each group.
+            expr = get_rolling_expr(col, w)
             if group_vars is not None:
                 expr = expr.over(group_vars)
             if fill_value is not None:
                 expr = expr.fill_null(fill_value)
-            ma_exprs.append(expr.alias(f"{col}_ma_{w}"))
+            rolling_exprs.append(expr.alias(f"{col}_{agg.lower()}_rolling_{w}"))
     
-    return data.with_columns(ma_exprs)
+    return data.with_columns(rolling_exprs)

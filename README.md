@@ -1041,13 +1041,13 @@ print(df_lags)
 </details>
 
 
-### Moving Averages
+### Rolling Features
 
 <details><summary>Click for code example</summary>
 
 ```python
 from PolarsFE import window
-
+      
 # Create a sample DataFrame.
 df = pl.DataFrame({
     "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05", "2023-01-06"],
@@ -1058,32 +1058,37 @@ df = pl.DataFrame({
 print("=== Original DataFrame ===")
 print(df)
 
-# Example 1: Data is not pre-sorted; function will sort by store and date.
-df_ma = window.moving_averages(
+# Example 1: Compute rolling mean for "sales" with window sizes 2 and 3, grouped by "store".
+df_roll_mean = window.rolling_features(
     data=df,
     date_col="date",
     columns=["sales"],
     window=[2, 3],
+    agg="mean",
     group_vars=["store"],
     fill_value=0,
-    is_sorted=False
+    is_sorted=False,
+    min_samples=1,
+    center=False
 )
-print("\n=== DataFrame with Moving Averages (Sorting Performed) ===")
-print(df_ma)
+print("\n=== DataFrame with Rolling Mean Features ===")
+print(df_roll_mean)
 
-# Example 2: Data is already sorted.
-df_sorted = df.sort(["store", "date"])
-df_ma_sorted = window.moving_averages(
-    data=df_sorted,
+# Example 2: Compute rolling standard deviation for "sales" with window size 3, grouped by "store".
+df_roll_std = window.rolling_features(
+    data=df,
     date_col="date",
     columns=["sales"],
-    window=2,
+    window=3,
+    agg="std",
     group_vars=["store"],
     fill_value=0,
-    is_sorted=True
+    is_sorted=False,
+    min_samples=1,
+    center=False
 )
-print("\n=== DataFrame with Moving Averages (Data Already Sorted) ===")
-print(df_ma_sorted)
+print("\n=== DataFrame with Rolling Standard Deviation Features ===")
+print(df_roll_std)
 ```
 
 </details>
