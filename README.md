@@ -1005,3 +1005,36 @@ print(df2_holidays)
 ```
 
 </details>
+
+
+<br>
+
+
+## Window
+
+### lags
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import window
+
+# Create a sample DataFrame.
+df = pl.DataFrame({
+    "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05", "2023-01-06"],
+    "sales": [100, 150, 200, 250, 300, 350],
+    "store": ["A", "A", "B", "B", "A", "B"]
+})
+
+print("=== Original DataFrame ===")
+print(df)
+
+# Create lag features for "sales" with lags 1 and 2.
+# Compute lags within each store.
+df_lags = window.lags(df, date_col="date", columns=["sales"], lags=[1,2], group_vars=["store"], fill_value=0)
+
+print("\n=== DataFrame with Lag Features ===")
+print(df_lags)
+```
+
+</details>
