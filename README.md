@@ -1012,6 +1012,7 @@ print(df2_holidays)
 
 ## Window
 
+
 ### Lags
 
 <details><summary>Click for code example</summary>
@@ -1035,6 +1036,54 @@ df_lags = window.lags(df, date_col="date", columns=["sales"], lags=[1,2], group_
 
 print("\n=== DataFrame with Lag Features ===")
 print(df_lags)
+```
+
+</details>
+
+
+### Moving Averages
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import window
+
+# Create a sample DataFrame.
+df = pl.DataFrame({
+    "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05", "2023-01-06"],
+    "sales": [100, 150, 200, 250, 300, 350],
+    "store": ["A", "A", "B", "B", "A", "B"]
+})
+
+print("=== Original DataFrame ===")
+print(df)
+
+# Example 1: Data is not pre-sorted; function will sort by store and date.
+df_ma = window.moving_averages(
+    data=df,
+    date_col="date",
+    columns=["sales"],
+    window=[2, 3],
+    group_vars=["store"],
+    fill_value=0,
+    is_sorted=False
+)
+print("\n=== DataFrame with Moving Averages (Sorting Performed) ===")
+print(df_ma)
+
+# Example 2: Data is already sorted.
+df_sorted = df.sort(["store", "date"])
+df_ma_sorted = window.moving_averages(
+    data=df_sorted,
+    date_col="date",
+    columns=["sales"],
+    window=2,
+    group_vars=["store"],
+    fill_value=0,
+    is_sorted=True
+)
+print("\n=== DataFrame with Moving Averages (Data Already Sorted) ===")
+print(df_ma_sorted)
 ```
 
 </details>

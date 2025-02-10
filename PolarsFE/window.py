@@ -75,3 +75,104 @@ def lags(
     # Append the lag columns to the sorted DataFrame.
     data_out = data_sorted.with_columns(lag_exprs)
     return data_out
+
+
+
+def moving_averages(
+    data: pl.DataFrame,
+    date_col: str,
+    columns: List[str],
+    window: Union[int, List[int]] = 3,
+    group_vars: Optional[List[str]] = None,
+    fill_value: Optional[Any] = None,
+    is_sorted: bool = False,
+    min_samples: Optional[int] = 1,
+    center: bool = False
+) -> pl.DataFrame:
+    """
+    Create moving average (simple moving average) features for specified columns in a Polars DataFrame.
+
+    The function optionally sorts the DataFrame by the date column (and grouping variables, if provided)
+    and then computes the moving average for each column over the specified window size(s). If group_vars are supplied,
+    the moving average is computed within each group.
+
+    Parameters:
+      data (pl.DataFrame): The input DataFrame.
+      date_col (str): The name of the datetime column to sort by.
+      columns (List[str]): A list of column names for which to compute moving averages.
+      window (Union[int, List[int]]): A single window size or a list of window sizes (number of rows). Default is 3.
+      group_vars (Optional[List[str]]): A list of columns to group by. If provided, moving averages are computed within each group.
+      fill_value (Optional[Any]): If provided, missing values resulting from the rolling window will be filled with this value.
+      is_sorted (bool): If True, the function assumes data is already sorted; otherwise, it sorts by group_vars (if provided) and date_col.
+      min_samples (Optional[int]): Minimum number of observations in the window required to have a value. Default is 1.
+      center (bool): If True, the moving window is centered on each row. Default is False.
+
+    Returns:
+      pl.DataFrame: The DataFrame with new moving average columns appended. Each new column is named "{column}_ma_{window}".
+
+    Examples:
+      from PolarsFE import window
+
+      # Create a sample DataFrame.
+      df = pl.DataFrame({
+          "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05", "2023-01-06"],
+          "sales": [100, 150, 200, 250, 300, 350],
+          "store": ["A", "A", "B", "B", "A", "B"]
+      })
+      
+      print("=== Original DataFrame ===")
+      print(df)
+      
+      # Example 1: Data is not pre-sorted; function will sort by store and date.
+      df_ma = window.moving_averages(
+          data=df,
+          date_col="date",
+          columns=["sales"],
+          window=[2, 3],
+          group_vars=["store"],
+          fill_value=0,
+          is_sorted=False
+      )
+      print("\n=== DataFrame with Moving Averages (Sorting Performed) ===")
+      print(df_ma)
+      
+      # Example 2: Data is already sorted.
+      df_sorted = df.sort(["store", "date"])
+      df_ma_sorted = window.moving_averages(
+          data=df_sorted,
+          date_col="date",
+          columns=["sales"],
+          window=2,
+          group_vars=["store"],
+          fill_value=0,
+          is_sorted=True
+      )
+      print("\n=== DataFrame with Moving Averages (Data Already Sorted) ===")
+      print(df_ma_sorted)
+    """
+
+    # Ensure window is a list.
+    if isinstance(window, int):
+        window = [window]
+
+    # Sort the data if it is not already sorted.
+    if not is_sorted:
+        if group_vars is not None:
+            sort_cols = group_vars + [date_col]
+        else:
+            sort_cols = [date_col]
+        data = data.sort(sort_cols)
+    
+    ma_exprs = []
+    for col in columns:
+        for w in window:
+            # Compute the rolling (moving) mean with the given window size.
+            expr = pl.col(col).rolling_mean(window_size=w, min_samples=min_samples, center=center)
+            # If grouping variables are provided, compute the rolling mean over each group.
+            if group_vars is not None:
+                expr = expr.over(group_vars)
+            if fill_value is not None:
+                expr = expr.fill_null(fill_value)
+            ma_exprs.append(expr.alias(f"{col}_ma_{w}"))
+    
+    return data.with_columns(ma_exprs)
