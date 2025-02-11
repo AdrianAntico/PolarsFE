@@ -1,4 +1,7 @@
-pyecharts
 polars>=1.0.0
 numpy
-shiny
+math
+datetime
+holidays
+typing
+collections

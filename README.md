@@ -1,10 +1,9 @@
 ![PyPI](https://img.shields.io/pypi/v/PolarsFE?label=pypi%20package)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/PolarsFE)
-![Build + Test](https://github.com/AdrianAntico/PolarsFE/actions/workflows/python-package.yml/badge.svg)
 
 ![](https://github.com/AdrianAntico/PolarsFE/raw/main/PolarsFE/Images/Logo.PNG)
 
-PolarsFE is a Python package 
+PolarsFE is a Python package of helper functions for feature engineering. The code examples should be sufficient to get you started.
 
 # Installation
 ```bash

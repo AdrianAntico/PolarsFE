@@ -17,17 +17,17 @@ with open(os.path.join(HERE, "requirements.txt"), encoding="utf-8") as f:
 
 # Setup configuration
 setup(
-    name="polars_feature_engineering",
+    name="PolarsFE",
     version="1.0.0",
     description="Feature engineering using polars",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://github.com/AdrianAntico/polars_feature_engineering",
+    url="https://github.com/AdrianAntico/PolarsFE",
     author="Adrian Antico",
     author_email="adrianantico@gmail.com",
     license="AGPL >= 3",
     packages=[
-        "polars_feature_engineering"
+        "PolarsFE"
     ],
     include_package_data=True,
     install_requires=required,
