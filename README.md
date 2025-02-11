@@ -647,255 +647,6 @@ print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 <br>
 
 
-## Datasets
-
-### Partition Random
-
-<details><summary>Click for code example</summary>
-
-```python
-from PolarsFE import datasets
-
-df = pl.DataFrame({
-    "id": np.arange(1, 101),
-    "value": np.random.rand(100) * 100,
-    "category": np.random.choice(["A", "B", "C"], size=100)
-})
-print("=== Original Dataset ===")
-print(df.head(10))
-print(f"Total rows: {df.height}\\n")
-
-# Partition into 3 equally sized parts with seed=42.
-parts_equal = datasets.partition_random(
-    data=df,
-    num_partitions=3,
-    seed=42
-)
-for idx, part in enumerate(parts_equal, start=1):
-    print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
-    print(part)
-    print()
-
-# Partition into 3 parts using percentages (30%, 30%, 40%).
-parts_pct = datasets.partition_random(
-    data=df,
-    num_partitions=3,
-    seed=42,
-    percentages=[0.3, 0.3, 0.4]
-)
-for idx, part in enumerate(parts_pct, start=1):
-    print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
-    print(part)
-print()
-```
-
-</details>
-
-
-### Partition Time
-
-<details><summary>Click for code example</summary>
-
-```python
-from PolarsFE import datasets
-import datetime
-
-# Create a DataFrame with dates spanning 100 days.
-dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(100)]
-df = pl.DataFrame({
-    "date": dates,
-    "value": np.random.rand(100)
-})
-
-# Partition into 4 equal time intervals.
-parts_equal = datasets.partition_time(
-    df,
-    time_col="date",
-    num_partitions=4
-)
-for idx, part in enumerate(parts_equal, start=1):
-    print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
-    print(part)
-
-# Partition into 4 parts using percentages: 10%, 20%, 30%, 40%.
-parts_pct = datasets.partition_time(
-    df,
-    time_col="date",
-    num_partitions=4,
-    percentages=[0.1, 0.2, 0.3, 0.4]
-)
-for idx, part in enumerate(parts_pct, start=1):
-    print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
-    print(part)
-```
-
-</details>
-
-
-### Partition Timeseries
-
-<details><summary>Click for code example</summary>
-
-```python
-from PolarsFE import datasets
-import datetime
-
-# Create a fake dataset with dates spanning 100 days and a panel column.
-dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(100)]
-df = pl.DataFrame({
-    "date": dates,
-    "value": np.random.rand(100) * 100,
-    "panel": np.random.choice(["A", "B", "C"], size=100)
-})
-
-print("=== Original Dataset (first 10 rows) ===")
-print(df.head(10))
-print(f"Total rows: {df.height}\n")
-
-# --- Test 1: Equal-Time Partitions ---
-print("=== Equal-Time Partitions ===")
-parts_equal = datasets.partition_timeseries(
-    df,
-    time_col="date",
-    panel_vars=["panel"],
-    num_partitions=4
-)
-for idx, part in enumerate(parts_equal, start=1):
-    print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
-    print(part)
-    print()
-
-# --- Test 2: Percentage-Based Partitions ---
-# For example, partition into 4 parts using percentages [0.1, 0.2, 0.3, 0.4].
-print("=== Percentage-Based Partitions ===")
-parts_pct = datasets.partition_timeseries(
-    df,
-    time_col="date",
-    panel_vars=["panel"],
-    num_partitions=4,
-    percentages=[0.1, 0.2, 0.3, 0.4]
-)
-for idx, part in enumerate(parts_pct, start=1):
-    print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
-    print(part)
-    print()
-```
-
-</details>
-
-
-### Stratified Sample
-
-<details><summary>Click for code example</summary>
-
-```python
-from PolarsFE import datasets
-import datetime
-
-# Create a fake dataset with a datetime column and a stratification (panel) column.
-dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(100)]
-df = pl.DataFrame({
-    "date": dates,
-    "value": np.random.rand(100) * 100,
-    "panel": np.random.choice(["A", "B", "C"], size=100)
-})
-
-print("=== Original Dataset (first 10 rows) ===")
-print(df.head(10))
-print(f"Total rows: {df.height}\n")
-
-# Test 1: Stratified sampling on a single column ("panel").
-sample_df = datasets.stratified_sample(df, stratify_by="panel", frac=0.2)
-print("=== Stratified Sample (20% from each panel) ===")
-print(sample_df)
-print(f"Sample rows: {sample_df.height}\n")
-
-# Test 2: Stratified sampling on multiple columns.
-# Create a dataset with two stratification variables.
-df2 = pl.DataFrame({
-    "id": np.arange(1, 201),
-    "group": np.random.choice(["A", "B"], size=200),
-    "region": np.random.choice(["North", "South"], size=200),
-    "value": np.random.rand(200) * 100
-})
-print("=== Original Dataset with Multiple Stratification Columns ===")
-print(df2.head(10))
-print(f"Total rows: {df2.height}\n")
-
-sample_df2 = datasets.stratified_sample(df2, stratify_by=["group", "region"], frac=0.15)
-print("=== Stratified Sample with 'group' and 'region' (15% from each stratum) ===")
-print(sample_df2)
-print(f"Sample rows: {sample_df2.height}")
-```
-
-</details>
-
-
-### Impute Missing Values
-
-<details><summary>Click for code example</summary>
-
-```python
-from PolarsFE import datasets
-
-df = pl.DataFrame({
-    "A": [1, None, 3, None],
-    "B": [None, 2, None, 4],
-    "C": ["x", None, "y", "z"],
-    "group": ["G1", "G1", "G2", "G2"]
-})
-
-# Constant imputation for columns A and B with 0.
-imputed_const = datasets.impute_missing(
-    df,
-    method="constant",
-    value=0,
-    columns=["A", "B"]
-)
-
-# Global mean imputation for numeric columns A and B.
-imputed_mean = datasets.impute_missing(
-    df,
-    method="mean",
-    columns=["A", "B"]
-)
-
-# Group-based median imputation for columns A and B.
-imputed_median_group = datasets.impute_missing(
-    df,
-    method="median",
-    columns=["A", "B"],
-    group_vars=["group"]
-)
-
-# Forward-fill imputation globally.
-imputed_ffill = datasets.impute_missing(
-    df,
-    method="ffill"
-)
-
-# Group-based median imputation for columns A and B.
-imputed_median_group = datasets.impute_missing(
-    df,
-    method="median",
-    columns=["A", "B"],
-    group_vars=["group"]
-)
-
-# Group-based forward fill imputation for all columns.
-imputed_ffill = datasets.impute_missing(
-    df,
-    method="ffill",
-    group_vars=["group"]
-)
-```
-
-</details>
-
-
-<br>
-
-
 ## Calendar
 
 ### Calendar Features
@@ -1149,6 +900,255 @@ df_diff3 = window.differences(
 )
 print("\n=== DataFrame with Multiple Sales Differences ===")
 print(df_diff3)
+```
+
+</details>
+
+
+<br>
+
+
+## Datasets
+
+### Partition Random
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import datasets
+
+df = pl.DataFrame({
+    "id": np.arange(1, 101),
+    "value": np.random.rand(100) * 100,
+    "category": np.random.choice(["A", "B", "C"], size=100)
+})
+print("=== Original Dataset ===")
+print(df.head(10))
+print(f"Total rows: {df.height}\\n")
+
+# Partition into 3 equally sized parts with seed=42.
+parts_equal = datasets.partition_random(
+    data=df,
+    num_partitions=3,
+    seed=42
+)
+for idx, part in enumerate(parts_equal, start=1):
+    print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
+    print(part)
+    print()
+
+# Partition into 3 parts using percentages (30%, 30%, 40%).
+parts_pct = datasets.partition_random(
+    data=df,
+    num_partitions=3,
+    seed=42,
+    percentages=[0.3, 0.3, 0.4]
+)
+for idx, part in enumerate(parts_pct, start=1):
+    print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
+    print(part)
+print()
+```
+
+</details>
+
+
+### Partition Time
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import datasets
+import datetime
+
+# Create a DataFrame with dates spanning 100 days.
+dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(100)]
+df = pl.DataFrame({
+    "date": dates,
+    "value": np.random.rand(100)
+})
+
+# Partition into 4 equal time intervals.
+parts_equal = datasets.partition_time(
+    df,
+    time_col="date",
+    num_partitions=4
+)
+for idx, part in enumerate(parts_equal, start=1):
+    print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
+    print(part)
+
+# Partition into 4 parts using percentages: 10%, 20%, 30%, 40%.
+parts_pct = datasets.partition_time(
+    df,
+    time_col="date",
+    num_partitions=4,
+    percentages=[0.1, 0.2, 0.3, 0.4]
+)
+for idx, part in enumerate(parts_pct, start=1):
+    print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
+    print(part)
+```
+
+</details>
+
+
+### Partition Timeseries
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import datasets
+import datetime
+
+# Create a fake dataset with dates spanning 100 days and a panel column.
+dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(100)]
+df = pl.DataFrame({
+    "date": dates,
+    "value": np.random.rand(100) * 100,
+    "panel": np.random.choice(["A", "B", "C"], size=100)
+})
+
+print("=== Original Dataset (first 10 rows) ===")
+print(df.head(10))
+print(f"Total rows: {df.height}\n")
+
+# --- Test 1: Equal-Time Partitions ---
+print("=== Equal-Time Partitions ===")
+parts_equal = datasets.partition_timeseries(
+    df,
+    time_col="date",
+    panel_vars=["panel"],
+    num_partitions=4
+)
+for idx, part in enumerate(parts_equal, start=1):
+    print(f"--- Equal Partition {idx} (rows: {part.height}) ---")
+    print(part)
+    print()
+
+# --- Test 2: Percentage-Based Partitions ---
+# For example, partition into 4 parts using percentages [0.1, 0.2, 0.3, 0.4].
+print("=== Percentage-Based Partitions ===")
+parts_pct = datasets.partition_timeseries(
+    df,
+    time_col="date",
+    panel_vars=["panel"],
+    num_partitions=4,
+    percentages=[0.1, 0.2, 0.3, 0.4]
+)
+for idx, part in enumerate(parts_pct, start=1):
+    print(f"--- Percentage Partition {idx} (rows: {part.height}) ---")
+    print(part)
+    print()
+```
+
+</details>
+
+
+### Stratified Sample
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import datasets
+import datetime
+
+# Create a fake dataset with a datetime column and a stratification (panel) column.
+dates = [datetime.datetime(2023, 1, 1) + datetime.timedelta(days=i) for i in range(100)]
+df = pl.DataFrame({
+    "date": dates,
+    "value": np.random.rand(100) * 100,
+    "panel": np.random.choice(["A", "B", "C"], size=100)
+})
+
+print("=== Original Dataset (first 10 rows) ===")
+print(df.head(10))
+print(f"Total rows: {df.height}\n")
+
+# Test 1: Stratified sampling on a single column ("panel").
+sample_df = datasets.stratified_sample(df, stratify_by="panel", frac=0.2)
+print("=== Stratified Sample (20% from each panel) ===")
+print(sample_df)
+print(f"Sample rows: {sample_df.height}\n")
+
+# Test 2: Stratified sampling on multiple columns.
+# Create a dataset with two stratification variables.
+df2 = pl.DataFrame({
+    "id": np.arange(1, 201),
+    "group": np.random.choice(["A", "B"], size=200),
+    "region": np.random.choice(["North", "South"], size=200),
+    "value": np.random.rand(200) * 100
+})
+print("=== Original Dataset with Multiple Stratification Columns ===")
+print(df2.head(10))
+print(f"Total rows: {df2.height}\n")
+
+sample_df2 = datasets.stratified_sample(df2, stratify_by=["group", "region"], frac=0.15)
+print("=== Stratified Sample with 'group' and 'region' (15% from each stratum) ===")
+print(sample_df2)
+print(f"Sample rows: {sample_df2.height}")
+```
+
+</details>
+
+
+### Impute Missing Values
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import datasets
+
+df = pl.DataFrame({
+    "A": [1, None, 3, None],
+    "B": [None, 2, None, 4],
+    "C": ["x", None, "y", "z"],
+    "group": ["G1", "G1", "G2", "G2"]
+})
+
+# Constant imputation for columns A and B with 0.
+imputed_const = datasets.impute_missing(
+    df,
+    method="constant",
+    value=0,
+    columns=["A", "B"]
+)
+
+# Global mean imputation for numeric columns A and B.
+imputed_mean = datasets.impute_missing(
+    df,
+    method="mean",
+    columns=["A", "B"]
+)
+
+# Group-based median imputation for columns A and B.
+imputed_median_group = datasets.impute_missing(
+    df,
+    method="median",
+    columns=["A", "B"],
+    group_vars=["group"]
+)
+
+# Forward-fill imputation globally.
+imputed_ffill = datasets.impute_missing(
+    df,
+    method="ffill"
+)
+
+# Group-based median imputation for columns A and B.
+imputed_median_group = datasets.impute_missing(
+    df,
+    method="median",
+    columns=["A", "B"],
+    group_vars=["group"]
+)
+
+# Group-based forward fill imputation for all columns.
+imputed_ffill = datasets.impute_missing(
+    df,
+    method="ffill",
+    group_vars=["group"]
+)
 ```
 
 </details>
