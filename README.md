@@ -1092,3 +1092,63 @@ print(df_roll_std)
 ```
 
 </details>
+
+
+### Differencing
+
+<details><summary>Click for code example</summary>
+
+```python
+from PolarsFE import window
+      
+# Create a sample DataFrame.
+df = pl.DataFrame({
+    "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05"],
+    "sales": [100, 150, 200, 250, 300],
+    "store": ["A", "A", "B", "B", "A"]
+})
+
+print("=== Original DataFrame ===")
+print(df)
+
+# Example 1: Compute difference with a single integer (lag=1) for "sales" within each store.
+df_diff1 = window.differences(
+    data=df,
+    date_col="date",
+    columns=["sales"],
+    diffs=1,
+    group_vars=["store"],
+    fill_value=0,
+    is_sorted=False
+)
+print("\n=== DataFrame with Sales Difference (lag=1) ===")
+print(df_diff1)
+
+# Example 2: Compute difference using a tuple (e.g., difference between lag 1 and lag 2) for "sales" within each store.
+df_diff2 = window.differences(
+    data=df,
+    date_col="date",
+    columns=["sales"],
+    diffs=(1, 2),
+    group_vars=["store"],
+    fill_value=0,
+    is_sorted=False
+)
+print("\n=== DataFrame with Sales Difference (lag 1 - lag 2) ===")
+print(df_diff2)
+
+# Example 3: Multiple difference specifications (lag 1 and tuple (1,2)) for "sales".
+df_diff3 = window.differences(
+    data=df,
+    date_col="date",
+    columns=["sales"],
+    diffs=[1, (1, 2)],
+    group_vars=["store"],
+    fill_value=0,
+    is_sorted=False
+)
+print("\n=== DataFrame with Multiple Sales Differences ===")
+print(df_diff3)
+```
+
+</details>
