@@ -207,9 +207,6 @@ def rolling_features(
     return data.with_columns(rolling_exprs)
 
 
-from typing import List, Union, Optional, Any
-import polars as pl
-
 def differences(
     data: pl.DataFrame,
     date_col: str,
