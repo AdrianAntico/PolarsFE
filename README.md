@@ -25,7 +25,7 @@ pip install git+https://github.com/AdrianAntico/PolarsFE.git#egg=PolarsFE
 
 ## Categorical
 
-### Create Dummy Variables
+### Dummy Variables
 
 <details><summary>Click for code example</summary>
 
