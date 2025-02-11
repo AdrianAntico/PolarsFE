@@ -18,7 +18,7 @@ with open(os.path.join(HERE, "requirements.txt"), encoding="utf-8") as f:
 # Setup configuration
 setup(
     name="PolarsFE",
-    version="1.0.1",
+    version="1.0.2",
     description="Feature engineering using polars",
     long_description=README,
     long_description_content_type="text/markdown",
