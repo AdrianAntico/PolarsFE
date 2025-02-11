@@ -650,6 +650,7 @@ print(df_logit_back.select(["Probability_logit", "Probability_logit_back"]))
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import calendar
 import datetime
 
@@ -677,6 +678,7 @@ print(df_partial)
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import calendar  # Assumes both functions are in the "calendar" module
 import datetime
 
@@ -731,6 +733,7 @@ print(df_cyclic_drop)
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import calendar
 import datetime
 
@@ -765,6 +768,7 @@ print(df2_holidays)
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import window
 
 # Create a sample DataFrame.
@@ -793,6 +797,7 @@ print(df_lags)
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import window
       
 # Create a sample DataFrame.
@@ -846,6 +851,7 @@ print(df_roll_std)
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import window
       
 # Create a sample DataFrame.
@@ -911,6 +917,7 @@ print(df_diff3)
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import datasets
 
 df = pl.DataFrame({
@@ -954,6 +961,7 @@ print()
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import datasets
 import datetime
 
@@ -994,6 +1002,7 @@ for idx, part in enumerate(parts_pct, start=1):
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import datasets
 import datetime
 
@@ -1046,6 +1055,7 @@ for idx, part in enumerate(parts_pct, start=1):
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import datasets
 import datetime
 
@@ -1093,6 +1103,7 @@ print(f"Sample rows: {sample_df2.height}")
 <details><summary>Click for code example</summary>
 
 ```python
+import polars as pl
 from PolarsFE import datasets
 
 df = pl.DataFrame({
