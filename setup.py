@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Adrian Antico <adrianantico@gmail.com>
+# Copyright (C) 2025 Adrian Antico <adrianantico@gmail.com>
 # License: APGL >= 3, adrianantico@gmail.com
 
 from setuptools import setup, find_packages
@@ -18,7 +18,7 @@ with open(os.path.join(HERE, "requirements.txt"), encoding="utf-8") as f:
 # Setup configuration
 setup(
     name="PolarsFE",
-    version="1.0.0",
+    version="1.0.1",
     description="Feature engineering using polars",
     long_description=README,
     long_description_content_type="text/markdown",

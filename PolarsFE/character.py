@@ -1,4 +1,5 @@
 import polars as pl
+import os
 from typing import List, Optional, Union, Dict, Any
 
 

@@ -31,7 +31,6 @@ pip install git+https://github.com/AdrianAntico/PolarsFE.git#egg=PolarsFE
 
 ```python
 from PolarsFE import character
-import polars as pl
 
 df = pl.DataFrame({
     "Category": ["A", "B", "A", "C", "B", "C", "A", "B", "D"],
@@ -65,8 +64,6 @@ print(levels_used)
 # ----------------------------------------------------------------------------------
 
 import os
-import numpy as np
-import polars as pl
 from PolarsFE import character
 
 # Set a seed for reproducibility
