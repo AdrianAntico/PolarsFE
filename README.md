@@ -7,7 +7,7 @@ PolarsFE is a Python package of helper functions for feature engineering. The co
 
 # Installation
 ```bash
-pip install PolarsFE
+pip install PolarsFE==1.0.2
 
 or 
 
