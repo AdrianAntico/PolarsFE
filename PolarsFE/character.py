@@ -93,8 +93,7 @@ def categorical_encoding(
 ) -> Union[pl.DataFrame, Dict[str, Union[pl.DataFrame, Dict[str, pl.DataFrame]]]]:
     """
     Categorical encoding using either target encoding or James–Stein encoding.
-    (Polars-based implementation using group_by.)
-    
+
     Parameters:
       - data (pl.DataFrame): Input data.
       - ML_Type (str): "classification", "multiclass", or "regression".
