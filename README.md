@@ -1,5 +1,5 @@
 ![PyPI](https://img.shields.io/pypi/v/PolarsFE?label=pypi%20package)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/PolarsFE)
+
 
 ![](https://github.com/AdrianAntico/PolarsFE/raw/main/PolarsFE/Images/Logo.PNG)
 
