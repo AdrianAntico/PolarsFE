@@ -1,5 +1,7 @@
 from typing import List, Union, Optional, Any
 import polars as pl
+from scipy.stats import beta
+
 
 def lags(
     data: pl.DataFrame,
@@ -331,3 +333,54 @@ def differences(
             diff_exprs.append(expr.alias(new_col_name))
     
     return data.with_columns(diff_exprs)
+
+
+def adstock_parametric(series, half_life, lag, total_duration, alpha, beta_param, apply_decay=False):
+    """
+    Applies an adstock transformation to an input series using a beta PDF weight function.
+    
+    Parameters:
+    - series: 1D numpy array of ad spend values.
+    - half_life: Used to compute ret_rate = (0.5)^(1/half_life)
+    - lag: Number of days before the effect begins.
+    - total_duration: Total duration (in days) for which the effect is felt after the lag.
+    - alpha, beta_param: Shape parameters for the beta distribution. 
+                         (alpha==beta_param gives a symmetric curve; 
+                         alpha < beta_param gives a right-skewed curve; 
+                         alpha > beta_param gives a left-skewed curve)
+    - apply_decay: Boolean flag. If True, multiplies the beta weight by an additional exponential decay.
+    
+    Returns:
+    - adstock: Transformed series (numpy array) incorporating the lag, ramp-up, and ramp-down.
+    - weights: The weight vector used for delays 0,1,...,total_duration-1.
+    """
+
+    # Calculate the decay rate as in your original function
+    ret_rate = (0.5) ** (1 / half_life)
+    
+    # Precompute the weight function for each delay day
+    weights = np.zeros(total_duration)
+    for d in range(total_duration):
+        if d < lag:
+            weights[d] = 0
+        else:
+            # Normalize time into [0, 1] over the period after the lag.
+            t_norm = (d - lag) / (total_duration - lag)
+            # Beta PDF weight: this handles both ramp-up and ramp-down phases.
+            weights[d] = beta.pdf(t_norm, alpha, beta_param)
+            # Optionally add additional exponential decay beyond the lag
+            if apply_decay:
+                weights[d] *= ret_rate ** (d - lag)
+    
+    # Normalize weights to ensure the sum equals 1 (optional, but useful for interpretation)
+    if weights.sum() > 0:
+        weights /= weights.sum()
+    
+    n = len(series)
+    adstock = np.zeros(n)
+    # Compute the adstock effect as a convolution of past spend with the weights
+    for t in range(n):
+        for d in range(total_duration):
+            if t - d >= 0:
+                adstock[t] += series[t - d] * weights[d]
+    return adstock, weights
