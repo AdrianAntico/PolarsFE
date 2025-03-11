@@ -1,6 +1,6 @@
 from typing import List, Union, Optional, Any
 import polars as pl
-from scipy.stats import beta
+from scipy.stats import beta as beta_p
 
 
 def lags(
@@ -335,7 +335,7 @@ def differences(
     return data.with_columns(diff_exprs)
 
 
-def adstock_parametric(series, half_life, lag, total_duration, alpha, beta_param, apply_decay=False):
+def adstock(series, steady_state, lag, total_duration, alpha, beta):
     """
     Applies an adstock transformation to an input series using a beta PDF weight function.
     
@@ -344,37 +344,82 @@ def adstock_parametric(series, half_life, lag, total_duration, alpha, beta_param
     - half_life: Used to compute ret_rate = (0.5)^(1/half_life)
     - lag: Number of days before the effect begins.
     - total_duration: Total duration (in days) for which the effect is felt after the lag.
-    - alpha, beta_param: Shape parameters for the beta distribution. 
-                         (alpha==beta_param gives a symmetric curve; 
-                         alpha < beta_param gives a right-skewed curve; 
-                         alpha > beta_param gives a left-skewed curve)
+    - alpha, beta: Shape parameters for the beta distribution. 
+                       (alpha==beta gives a symmetric curve; 
+                       alpha < beta gives a right-skewed curve; 
+                       alpha > beta gives a left-skewed curve)
     - apply_decay: Boolean flag. If True, multiplies the beta weight by an additional exponential decay.
     
     Returns:
     - adstock: Transformed series (numpy array) incorporating the lag, ramp-up, and ramp-down.
     - weights: The weight vector used for delays 0,1,...,total_duration-1.
+    
+    Examples:
+      import numpy as np
+      import plotly.graph_objects as go
+      from scipy.stats import beta
+
+      # Example parameters and ad spend series
+      ad_spend = np.array([100, 150, 200, 250, 300, 350, 400, 350, 300, 250, 200, 150, 100])
+      ad_spend = np.array([100, 150, 200, 250, 300, 350, 400, 350, 300, 250, 200, 150, 100, 0, 0, 0, 0, 0])
+      ad_spend = np.array([100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+      ad_spend = np.array([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100])
+      ad_spend = np.array([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100])
+      steady_state = 1.2        # half-life for the exponential decay part
+      lag = 2              # 2-day lag before any effect is seen
+      total_duration = 6  # total effect lasts for 15 days (after lag)
+      
+      # Change these parameters to see different shapes:
+      alpha = 4          # controls the ramp-up
+      beta_param = 4     # controls the ramp-down (alpha < beta gives an early peak and then decay)
+      # apply_decay = False  # set to True if you wish to layer on an additional exponential decay
+      
+      # Compute adstock transformation and weight vector
+      adstock_series, weights = adstock(ad_spend, steady_state, lag, total_duration, alpha, beta)
+      
+      # ---------------------
+      # Plot the weight function
+      delay_days = np.arange(total_duration)
+      fig_weights = go.Figure(data=go.Scatter(x=delay_days, y=weights, mode='lines+markers'))
+      fig_weights.update_layout(
+          title="Weight Function: Ramp-Up and Ramp-Down Effect",
+          xaxis_title="Delay (days)",
+          yaxis_title="Weight",
+          template="plotly_white"
+      )
+      fig_weights.show()
+      
+      # ---------------------
+      # Plot the original ad spend series and the adstock series
+      days = np.arange(len(ad_spend))
+      fig_adstock = go.Figure()
+      fig_adstock.add_trace(go.Scatter(x=days, y=ad_spend, mode='lines+markers', name='Ad Spend'))
+      fig_adstock.add_trace(go.Scatter(x=days, y=adstock_series, mode='lines+markers', name='Adstock Transformed'))
+      fig_adstock.update_layout(
+          title="Ad Spend vs. Adstock Transformed Series",
+          xaxis_title="Day",
+          yaxis_title="Value",
+          template="plotly_white"
+      )
+      fig_adstock.show()
     """
 
-    # Calculate the decay rate as in your original function
-    ret_rate = (0.5) ** (1 / half_life)
-    
     # Precompute the weight function for each delay day
-    weights = np.zeros(total_duration)
+    raw_weights = np.zeros(total_duration)
     for d in range(total_duration):
         if d < lag:
-            weights[d] = 0
+            raw_weights[d] = 0
         else:
-            # Normalize time into [0, 1] over the period after the lag.
+            # Map the delay to the [0, 1] interval
             t_norm = (d - lag) / (total_duration - lag)
-            # Beta PDF weight: this handles both ramp-up and ramp-down phases.
-            weights[d] = beta.pdf(t_norm, alpha, beta_param)
-            # Optionally add additional exponential decay beyond the lag
-            if apply_decay:
-                weights[d] *= ret_rate ** (d - lag)
-    
-    # Normalize weights to ensure the sum equals 1 (optional, but useful for interpretation)
-    if weights.sum() > 0:
-        weights /= weights.sum()
+            raw_weights[d] = beta_p.pdf(t_norm, alpha, beta)
+
+    # Normalize the weights so that their sum equals the user-specified steady_state.
+    norm_factor = raw_weights.sum()
+    if norm_factor == 0:
+        weights = raw_weights
+    else:
+        weights = raw_weights * (steady_state / norm_factor)
     
     n = len(series)
     adstock = np.zeros(n)
@@ -383,4 +428,5 @@ def adstock_parametric(series, half_life, lag, total_duration, alpha, beta_param
         for d in range(total_duration):
             if t - d >= 0:
                 adstock[t] += series[t - d] * weights[d]
+
     return adstock, weights
