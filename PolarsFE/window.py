@@ -1,6 +1,7 @@
 from typing import List, Union, Optional, Any
 import polars as pl
 from scipy.stats import beta as beta_p
+import numpy as np
 
 
 def lags(
