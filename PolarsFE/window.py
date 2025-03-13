@@ -404,11 +404,15 @@ def adstock(series, steady_state, lag, total_duration, alpha, beta):
       fig_adstock.show()
     """
 
+    # In case this is used in an optimizer that assume continuous variables
+    lag = round(lag)
+    total_duration = round(total_duration)
+
     # Precompute the weight function for each delay day
     raw_weights = np.zeros(total_duration)
-    for d in range(total_duration):
+    for d in range(1, total_duration + 1):
         if d < lag:
-            raw_weights[d] = 0
+            raw_weights[d - 1] = 0
         else:
             # Map the delay to the [0, 1] interval
             t_norm = (d - lag) / (total_duration - lag)
@@ -420,13 +424,13 @@ def adstock(series, steady_state, lag, total_duration, alpha, beta):
         weights = raw_weights
     else:
         weights = raw_weights * (steady_state / norm_factor)
-    
+
     n = len(series)
     adstock = np.zeros(n)
     # Compute the adstock effect as a convolution of past spend with the weights
     for t in range(n):
-        for d in range(total_duration):
+        for d in range(1, total_duration + 1):
             if t - d >= 0:
-                adstock[t] += series[t - d] * weights[d]
+                adstock[t] += series[t - d] * weights[d - 1]
 
     return adstock, weights
