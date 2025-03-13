@@ -336,7 +336,7 @@ def differences(
     return data.with_columns(diff_exprs)
 
 
-def adstock(series, steady_state, lag, total_duration, alpha, beta):
+def adstock(series: np.ndarray, steady_state, lag, total_duration, alpha, beta):
     """
     Applies an adstock transformation to an input series using a beta PDF weight function.
     
