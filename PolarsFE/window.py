@@ -411,7 +411,7 @@ def adstock(series, steady_state, lag, total_duration, alpha, beta):
     # Precompute the weight function for each delay day
     raw_weights = np.zeros(total_duration)
     for d in range(1, total_duration + 1):
-        if d < lag:
+        if d <= lag:
             raw_weights[d - 1] = 0
         else:
             # Map the delay to the [0, 1] interval
