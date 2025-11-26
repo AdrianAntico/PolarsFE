@@ -1,5 +1,4 @@
 import polars as pl
-import os
 from typing import List, Optional, Union, Dict, Any
 
 
@@ -79,11 +78,10 @@ def dummy_variables(
 
 def categorical_encoding(
     data: pl.DataFrame,
-    ML_Type: str = "classification",
+    ML_Type: str = "regression",
     group_variables: Optional[List[str]] = None,
     target_variable: Optional[str] = None,
     method: str = "target_encoding",
-    save_path: Optional[str] = None,
     scoring: bool = False,
     impute_value_scoring: Optional[Union[int, float]] = None,
     return_factor_level_list: bool = True,
@@ -94,257 +92,39 @@ def categorical_encoding(
     """
     Categorical encoding using either target encoding or James–Stein encoding.
 
-    Parameters:
-      - data (pl.DataFrame): Input data.
-      - ML_Type (str): "classification", "multiclass", or "regression".
-      - group_variables (Optional[List[str]]): Categorical columns to encode.
-      - target_variable (Optional[str]): The target column.
-      - method (str): Either "target_encoding" or "james-stein".
-      - save_path (Optional[str]): Directory to save/read mapping files.
-      - scoring (bool): If True, then we are in scoring mode.
-      - impute_value_scoring (Optional[Union[int, float]]): Value to impute if mapping is missing.
-      - return_factor_level_list (bool): If True (and not scoring) returns mapping components.
-      - supply_factor_level_list (Optional[Dict[str, pl.DataFrame]]): Mapping components to use in scoring mode.
-      - keep_original_factors (bool): If False, original factor columns are dropped.
-      - debug (bool): If True, prints debug messages.
-      
-    Returns:
-      Either a Polars DataFrame or a dict with keys "data" and "factor_components".
+    This version has **no file I/O**. All mappings are kept in memory and
+    passed via `supply_factor_level_list` / returned via `factor_components`.
 
-    Examples:
-      # ----------------------------------------------------------------------------------
-      # Classification target version
-      # ----------------------------------------------------------------------------------
-      
-      import os
-      import numpy as np
-      import polars as pl
-      from PolarsFE import character
-      
-      # Set a seed for reproducibility
-      np.random.seed(42)
-      
-      # Define parameters for fake data
-      num_rows = 1000
-      num_factors = 10
-      categories = ["A", "B", "C", "D", "E"]
-      
-      # Build fake data for factors
-      fake_data = {f"Factor_{i}": np.random.choice(categories, size=num_rows)
-                   for i in range(1, num_factors + 1)}
-      
-      # Create a binary target column ("Adrian")
-      fake_data["Adrian"] = np.random.binomial(1, 0.5, size=num_rows)
-      
-      # Convert to a Polars DataFrame
-      df = pl.DataFrame(fake_data)
-      
-      print("=== Fake Data Sample ===")
-      print(df.head())
-      
-      # List of factor columns to encode
-      factor_columns = [f"Factor_{i}" for i in range(1, num_factors + 1)]
-      
-      # --- Test Target Encoding ---
-      print("\n=== Testing Target Encoding ===")
-      result_target = character.categorical_encoding(
-          data=df,
-          ML_Type="classification",
-          group_variables=factor_columns,
-          target_variable="Adrian",
-          method="target_encoding",
-          save_path=None,          # No file saving for this test
-          scoring=False,           # Training mode
-          keep_original_factors=False,
-          debug=True,              # Enable debug prints
-      )
-      
-      if isinstance(result_target, dict):
-          encoded_df_target = result_target["data"]
-      else:
-          encoded_df_target = result_target
-      
-      print("\n--- Target Encoding Result Sample ---")
-      print(encoded_df_target.head())
-      
-      # --- Test James–Stein Encoding ---
-      print("\n=== Testing James–Stein Encoding ===")
-      result_js = character.categorical_encoding(
-          data=df,
-          ML_Type="classification",
-          group_variables=factor_columns,
-          target_variable="Adrian",
-          method="james-stein",
-          save_path=None,          # No file saving for this test
-          scoring=False,           # Training mode
-          keep_original_factors=True,
-          debug=True,              # Enable debug prints
-      )
-      
-      if isinstance(result_js, dict):
-          encoded_df_js = result_js["data"]
-      else:
-          encoded_df_js = result_js
-      
-      print("\n--- James–Stein Encoding Result Sample ---")
-      print(encoded_df_js.head())
-      
-      
-      import os
-      import numpy as np
-      import polars as pl
-      
-      # ------------------------------------------------------------------------------
-      # Regression target version
-      # ------------------------------------------------------------------------------
-      
-      # Create a fake regression dataset
-      np.random.seed(42)
-      
-      num_rows = 1000
-      num_factors = 5
-      categories = ["A", "B", "C", "D", "E"]
-      
-      # Build fake data for categorical factors
-      data_dict = {f"Factor_{i}": np.random.choice(categories, size=num_rows)
-                   for i in range(1, num_factors + 1)}
-      
-      # Create a continuous target variable (e.g., normally distributed)
-      data_dict["target"] = np.random.normal(loc=50, scale=10, size=num_rows)
-      
-      # Convert the dictionary into a Polars DataFrame
-      df_reg = pl.DataFrame(data_dict)
-      
-      print("=== Regression Data Sample ===")
-      print(df_reg.head())
-      
-      # List of factor columns to encode
-      factor_columns = [f"Factor_{i}" for i in range(1, num_factors + 1)]
-      
-      # --- Test Target Encoding for Regression ---
-      print("\n=== Testing Target Encoding for Regression ===")
-      result_target_reg = character.categorical_encoding(
-          data=df_reg,
-          ML_Type="regression",
-          group_variables=factor_columns,
-          target_variable="target",
-          method="target_encoding",
-          save_path=None,          # Not saving to disk in this test
-          scoring=False,           # Training mode
-          keep_original_factors=True,
-          debug=True,              # Enable debug prints
-      )
-      
-      # If the function returns a dict (with mapping components), extract the data
-      if isinstance(result_target_reg, dict):
-          encoded_df_target_reg = result_target_reg["data"]
-      else:
-          encoded_df_target_reg = result_target_reg
-      
-      print("\n--- Target Encoding (Regression) Result Sample ---")
-      print(encoded_df_target_reg.head())
-      
-      # --- Test James–Stein Encoding for Regression ---
-      print("\n=== Testing James–Stein Encoding for Regression ===")
-      result_js_reg = character.categorical_encoding(
-          data=df_reg,
-          ML_Type="regression",
-          group_variables=factor_columns,
-          target_variable="target",
-          method="james-stein",
-          save_path=None,          # Not saving to disk in this test
-          scoring=False,           # Training mode
-          keep_original_factors=False,
-          debug=True,              # Enable debug prints
-      )
-      
-      if isinstance(result_js_reg, dict):
-          encoded_df_js_reg = result_js_reg["data"]
-      else:
-          encoded_df_js_reg = result_js_reg
-      
-      print("\n--- James–Stein Encoding (Regression) Result Sample ---")
-      print(encoded_df_js_reg.head())
-      
-      
-      import os
-      import numpy as np
-      import polars as pl
-      
-      # ------------------------------------------------------------------------------
-      # MultiClass target version
-      # ------------------------------------------------------------------------------
-      
-      # Create a fake multiclass dataset
-      np.random.seed(42)
-      
-      num_rows = 1000
-      num_factors = 5
-      # For our categorical factors, use 5 possible levels.
-      factor_categories = ["A", "B", "C", "D", "E"]
-      
-      # Build fake data for factors
-      data_dict = {f"Factor_{i}": np.random.choice(factor_categories, size=num_rows)
-                   for i in range(1, num_factors + 1)}
-      
-      # Create a categorical target variable with more than 2 levels.
-      target_categories = ["class1", "class2", "class3"]
-      # Optionally, you can set probabilities for each class.
-      data_dict["target_class"] = np.random.choice(target_categories, size=num_rows, p=[0.3, 0.4, 0.3])
-      
-      # Convert the dictionary into a Polars DataFrame
-      df_multi = pl.DataFrame(data_dict)
-      
-      print("=== Multiclass Data Sample ===")
-      print(df_multi.head())
-      
-      # List of factor columns to encode
-      factor_columns = [f"Factor_{i}" for i in range(1, num_factors + 1)]
-      
-      # --- Test Target Encoding for Multiclass ---
-      print("\n=== Testing Target Encoding for Multiclass ===")
-      result_target_multi = character.categorical_encoding(
-          data=df_multi,
-          ML_Type="multiclass",
-          group_variables=factor_columns,
-          target_variable="target_class",
-          method="target_encoding",
-          save_path=None,          # Not saving to disk in this test
-          scoring=False,           # Training mode
-          keep_original_factors=False,
-          debug=True,              # Enable debug prints
-      )
-      
-      # If the function returns a dict (with mapping components), extract the data.
-      if isinstance(result_target_multi, dict):
-          encoded_df_target_multi = result_target_multi["data"]
-      else:
-          encoded_df_target_multi = result_target_multi
-      
-      print("\n--- Target Encoding (Multiclass) Result Sample ---")
-      print(encoded_df_target_multi.head())
-      
-      # --- Test James–Stein Encoding for Multiclass ---
-      print("\n=== Testing James–Stein Encoding for Multiclass ===")
-      result_js_multi = character.categorical_encoding(
-          data=df_multi,
-          ML_Type="multiclass",
-          group_variables=factor_columns,
-          target_variable="target_class",
-          method="james-stein",
-          save_path=None,          # Not saving to disk in this test
-          scoring=False,           # Training mode
-          keep_original_factors=False,
-          debug=True,              # Enable debug prints
-      )
-      
-      if isinstance(result_js_multi, dict):
-          encoded_df_js_multi = result_js_multi["data"]
-      else:
-          encoded_df_js_multi = result_js_multi
-      
-      print("\n--- James–Stein Encoding (Multiclass) Result Sample ---")
-      print(encoded_df_js_multi.head())
+    Parameters
+    ----------
+    data : pl.DataFrame
+        Input data.
+    ML_Type : str
+        "classification", "multiclass", or "regression".
+    group_variables : list[str] or None
+        Categorical columns to encode.
+    target_variable : str or None
+        The target column.
+    method : str
+        Either "target_encoding" or "james-stein".
+    scoring : bool
+        If True, apply existing mappings (scoring mode).
+    impute_value_scoring : int or float or None
+        Value to impute if mapping is missing (unseen levels → this value).
+    return_factor_level_list : bool
+        If True (and not scoring) returns mapping components.
+    supply_factor_level_list : dict or None
+        Mapping components to use in scoring mode.
+    keep_original_factors : bool
+        If False, original factor columns are dropped.
+    debug : bool
+        If True, prints debug messages.
+
+    Returns
+    -------
+    Either a Polars DataFrame or a dict with keys:
+      - "data"             : encoded DataFrame
+      - "factor_components": dict of mapping DataFrames (training only)
     """
 
     # Only allow supported methods.
@@ -361,17 +141,19 @@ def categorical_encoding(
     group_variables = [gv for gv in (group_variables or []) if gv in data.columns]
 
     # For holding mapping tables (if in training mode)
-    factor_components = {} if not scoring else None
+    factor_components: Optional[Dict[str, pl.DataFrame]] = {} if not scoring else None
 
     ML_Type = ML_Type.lower()
+    method_lower = method.lower()
 
     # ----- TARGET ENCODING -----
-    if method.lower() == "target_encoding":
-        for group in group_variables:  # group = group_variables[0]
+    if method_lower == "target_encoding":
+        for group in group_variables:
             if debug:
                 print(f"Target encoding on '{group}'")
 
             if not scoring:
+                # TRAINING MODE
                 if ML_Type == "multiclass":
                     # Count rows per (group, target) pair.
                     df_counts = data.group_by([group, target_variable]).agg(
@@ -404,36 +186,39 @@ def categorical_encoding(
                         pl.col(target_variable).mean().alias(f"{group}_TargetEncode")
                     )
 
-                if save_path:
-                    os.makedirs(save_path, exist_ok=True)
-                    csv_file = os.path.join(save_path, f"{group}_TargetEncode.csv")
-                    mapping_df.write_csv(csv_file)
             else:
+                # SCORING MODE
                 if supply_factor_level_list is not None and group in supply_factor_level_list:
                     mapping_df = supply_factor_level_list[group]
                     if not isinstance(mapping_df, pl.DataFrame):
                         mapping_df = pl.from_pandas(mapping_df)
-                elif save_path:
-                    csv_file = os.path.join(save_path, f"{group}_TargetEncode.csv")
-                    mapping_df = pl.read_csv(csv_file)
                 else:
                     raise ValueError(
-                        "In scoring mode you must supply either a 'supply_factor_level_list' or a valid 'save_path'."
+                        "In scoring mode you must supply 'supply_factor_level_list' "
+                        "containing a mapping DataFrame for each group variable."
                     )
 
+            # Join encoded column(s) back to data
             data = data.join(mapping_df, on=group, how="left")
+
             if not keep_original_factors:
                 data = data.drop(group)
 
+            # Fill unseen levels with impute_value_scoring
             if scoring and impute_value_scoring is not None:
                 if ML_Type == "multiclass":
                     for col in mapping_df.columns:
                         if col != group:
-                            data = data.with_columns(pl.col(col).fill_null(impute_value_scoring))
+                            data = data.with_columns(
+                                pl.col(col).fill_null(impute_value_scoring)
+                            )
                 else:
                     new_col = f"{group}_TargetEncode"
-                    data = data.with_columns(pl.col(new_col).fill_null(impute_value_scoring))
-            if not scoring:
+                    data = data.with_columns(
+                        pl.col(new_col).fill_null(impute_value_scoring)
+                    )
+
+            if not scoring and factor_components is not None:
                 factor_components[group] = mapping_df
 
         if not scoring and return_factor_level_list:
@@ -442,12 +227,13 @@ def categorical_encoding(
             return data
 
     # ----- JAMES–STEIN ENCODING -----
-    elif method.lower() == "james-stein":
-        for group in group_variables:  # group = group_variables[0]
+    elif method_lower == "james-stein":
+        for group in group_variables:
             if debug:
                 print(f"James–Stein encoding on '{group}'")
 
             if not scoring:
+                # TRAINING MODE
                 if ML_Type == "multiclass":
                     df_counts = data.group_by([group, target_variable]).agg(
                         pl.len().alias("N")
@@ -463,8 +249,10 @@ def categorical_encoding(
                         (pl.col("N") / pl.col("TargetSum")).alias("TargetGroupMean"),
                     ])
                     df_counts = df_counts.with_columns([
-                        ((pl.col("TargetMean") * (1 - pl.col("TargetMean"))) / pl.col("TargetSum")).alias("TargetVariance"),
-                        ((pl.col("TargetGroupMean") * (1 - pl.col("TargetGroupMean"))) / pl.col("N")).alias("TargetGroupVariance"),
+                        ((pl.col("TargetMean") * (1 - pl.col("TargetMean"))) /
+                         pl.col("TargetSum")).alias("TargetVariance"),
+                        ((pl.col("TargetGroupMean") * (1 - pl.col("TargetGroupMean"))) /
+                         pl.col("N")).alias("TargetGroupVariance"),
                     ])
                     df_counts = df_counts.with_columns(
                         (pl.col("TargetGroupVariance") /
@@ -472,7 +260,8 @@ def categorical_encoding(
                          ).alias("Z")
                     )
                     df_counts = df_counts.with_columns(
-                        ((1 - pl.col("Z")) * pl.col("TargetGroupMean") + pl.col("Z") * pl.col("TargetMean")).alias(f"{group}_JamesStein")
+                        ((1 - pl.col("Z")) * pl.col("TargetGroupMean") +
+                         pl.col("Z") * pl.col("TargetMean")).alias(f"{group}_JamesStein")
                     )
                     df_counts = df_counts.select([group, target_variable, f"{group}_JamesStein"])
                     mapping_df = df_counts.pivot(
@@ -487,6 +276,7 @@ def categorical_encoding(
                         if col != group
                     }
                     mapping_df = mapping_df.rename(rename_dict)
+
                 else:
                     grand_mean = data[target_variable].mean()
                     if ML_Type in ["classification", "classifier"]:
@@ -503,10 +293,12 @@ def categorical_encoding(
                             (pl.lit(pop_var) / (pl.col("Var_Group") + pl.lit(pop_var))).alias("Z")
                         )
                         mapping_df = mapping_df.with_columns(
-                            (pl.col("Z") * pl.col("Mean") + (1 - pl.col("Z")) * pl.lit(grand_mean)
+                            (pl.col("Z") * pl.col("Mean") +
+                             (1 - pl.col("Z")) * pl.lit(grand_mean)
                              ).alias(f"{group}_JamesStein")
                         )
                         mapping_df = mapping_df.select([group, f"{group}_JamesStein"])
+
                     elif ML_Type == "regression":
                         mapping_df = data.group_by(group).agg([
                             pl.col(target_variable).mean().alias("Mean"),
@@ -517,7 +309,10 @@ def categorical_encoding(
                         mapping_df = mapping_df.with_columns(pl.lit(overall_epv).alias("EPV"))
                         group_means = mapping_df["Mean"].to_list()
                         num_groups = len(group_means)
-                        V = sum((m - grand_mean) ** 2 for m in group_means) / (num_groups - 1) if num_groups > 1 else 0
+                        V = (
+                            sum((m - grand_mean) ** 2 for m in group_means) /
+                            (num_groups - 1)
+                        ) if num_groups > 1 else 0
                         mapping_df = mapping_df.with_columns(
                             (pl.lit(V) - pl.col("EPV") / pl.col("N")).alias("VHM")
                         )
@@ -527,40 +322,45 @@ def categorical_encoding(
                             (pl.col("N") / (pl.col("N") + pl.lit(K))).alias("Z")
                         )
                         mapping_df = mapping_df.with_columns(
-                            (pl.col("Z") * pl.col("Mean") + (1 - pl.col("Z")) * pl.lit(grand_mean)
+                            (pl.col("Z") * pl.col("Mean") +
+                             (1 - pl.col("Z")) * pl.lit(grand_mean)
                              ).alias(f"{group}_JamesStein")
                         )
                         mapping_df = mapping_df.select([group, f"{group}_JamesStein"])
+
             else:
+                # SCORING MODE
                 if supply_factor_level_list is not None and group in supply_factor_level_list:
                     mapping_df = supply_factor_level_list[group]
                     if not isinstance(mapping_df, pl.DataFrame):
                         mapping_df = pl.from_pandas(mapping_df)
-                elif save_path:
-                    csv_file = os.path.join(save_path, f"{group}_JamesStein.csv")
-                    mapping_df = pl.read_csv(csv_file)
                 else:
                     raise ValueError(
-                        "In scoring mode you must supply either a 'supply_factor_level_list' or a valid 'save_path'."
+                        "In scoring mode you must supply 'supply_factor_level_list' "
+                        "containing a mapping DataFrame for each group variable."
                     )
 
-            if not scoring and save_path and method.lower() == "james-stein":
-                csv_file = os.path.join(save_path, f"{group}_JamesStein.csv")
-                mapping_df.write_csv(csv_file)
-
+            # Join encoded column(s) back to data
             data = data.join(mapping_df, on=group, how="left")
+
             if not keep_original_factors:
                 data = data.drop(group)
 
+            # Fill unseen levels with impute_value_scoring
             if scoring and impute_value_scoring is not None:
                 if ML_Type == "multiclass":
                     for col in mapping_df.columns:
                         if col != group:
-                            data = data.with_columns(pl.col(col).fill_null(impute_value_scoring))
+                            data = data.with_columns(
+                                pl.col(col).fill_null(impute_value_scoring)
+                            )
                 else:
                     new_col = f"{group}_JamesStein"
-                    data = data.with_columns(pl.col(new_col).fill_null(impute_value_scoring))
-            if not scoring:
+                    data = data.with_columns(
+                        pl.col(new_col).fill_null(impute_value_scoring)
+                    )
+
+            if not scoring and factor_components is not None:
                 factor_components[group] = mapping_df
 
         if not scoring and return_factor_level_list:
