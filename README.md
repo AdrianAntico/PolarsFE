@@ -17,6 +17,176 @@ pip install git+https://github.com/AdrianAntico/PolarsFE.git#egg=PolarsFE
 <br>
 
 
+# PolarsFE vNext Feature Engineering and Model Prep Examples
+
+The vNext APIs are additive. Existing PolarsFE modules remain available, while
+the vNext layer provides a single plan, fit, transform, artifact, and QA
+contract for scoring-safe workflows.
+
+## Feature Engineering vNext
+
+```python
+from datetime import datetime, timedelta
+
+import polars as pl
+import PolarsFE
+
+n = 1000
+base_date = datetime(2024, 1, 1)
+
+train = pl.DataFrame(
+    {
+        "id": list(range(1, n + 1)),
+        "revenue": [float((i % 100) + 1) for i in range(n)],
+        "spend": [float((i * 7) % 250) + 0.1 for i in range(n)],
+        "channel": [["Email", "Search", "Social", "Direct", "Affiliate"][i % 5] for i in range(n)],
+        "region": [["West", "East", "South", "North"][i % 4] for i in range(n)],
+        "event_date": [base_date + timedelta(days=i % 365) for i in range(n)],
+        "note": [["new customer", "repeat", "", None, "promo click"][i % 5] for i in range(n)],
+    }
+)
+
+plan = PolarsFE.polars_feature_plan(
+    numeric={
+        "columns": ["revenue", "spend"],
+        "transforms": ["log1p", "sqrt", "standardize", "winsorize"],
+        "winsorize_probs": [0.05, 0.95],
+    },
+    categorical={
+        "columns": ["channel", "region"],
+        "top_n": 3,
+        "rare_level": "__RARE__",
+        "unseen_level": "__UNSEEN__",
+        "one_hot": True,
+        "keep_original": True,
+    },
+    calendar={
+        "columns": ["event_date"],
+        "features": ["year", "month", "wday", "quarter", "is_weekend"],
+    },
+    text={
+        "columns": ["note"],
+        "features": ["char_count", "word_count", "digit_count", "blank"],
+    },
+    missingness={
+        "columns": ["revenue", "channel", "note"],
+        "suffix": "_is_missing",
+    },
+    interactions={
+        "numeric_pairs": [["revenue", "spend"]],
+        "categorical_numeric": [{"categorical": "channel", "numeric": "spend"}],
+        "categorical_pairs": [["channel", "region"]],
+        "max_features": 20,
+    },
+)
+
+fit = PolarsFE.polars_fit_feature_plan(train, plan)
+engineered_train = PolarsFE.polars_transform_feature_plan(train, fit)
+
+score = train.with_columns(
+    pl.when(pl.col("id") == 1)
+    .then(pl.lit("Podcast"))
+    .otherwise(pl.col("channel"))
+    .alias("channel")
+)
+engineered_score = PolarsFE.polars_transform_feature_plan(score, fit)
+
+artifact_result = PolarsFE.generate_polars_feature_engineering_artifacts(train, plan)
+print(artifact_result["artifacts"]["feature_manifest"])
+print(artifact_result["artifacts"]["diagnostics"])
+
+print(PolarsFE.qa_polarsfe_vnext())
+print(PolarsFE.qa_generate_polars_feature_engineering_artifacts())
+```
+
+## Model Prep vNext
+
+```python
+from datetime import datetime, timedelta
+
+import polars as pl
+import PolarsFE
+
+n = 1000
+base_date = datetime(2024, 1, 1)
+
+data = pl.DataFrame(
+    {
+        "id": list(range(1, n + 1)),
+        "target": [["no", "yes"][i % 2] for i in range(n)],
+        "customer_id": [f"c{(i % 200) + 1:03d}" for i in range(n)],
+        "event_date": [base_date + timedelta(days=i % 365) for i in range(n)],
+        "x1": [float(i % 17) for i in range(n)],
+        "x2": [float((i * 11) % 101) for i in range(n)],
+    }
+)
+
+# Random train/test split
+random_plan = PolarsFE.polars_partition_plan(
+    method="random",
+    fractions={"train": 0.8, "test": 0.2},
+    seed=123,
+    k=5,
+)
+
+random_fit = PolarsFE.polars_fit_partition_plan(data, random_plan)
+random_prepared = PolarsFE.polars_apply_partition_plan(data, random_fit)
+print(random_fit["partition_manifest"])
+print(random_fit["fold_manifest"])
+
+# Stratified train/validation/test split
+stratified_plan = PolarsFE.polars_partition_plan(
+    method="stratified",
+    fractions={"train": 0.7, "validation": 0.1, "test": 0.2},
+    target_col="target",
+    seed=123,
+    k=5,
+)
+
+stratified_fit = PolarsFE.polars_fit_partition_plan(data, stratified_plan)
+stratified_prepared = PolarsFE.polars_apply_partition_plan(data, stratified_fit)
+
+# Grouped split keeps all rows for a customer in the same partition
+grouped_plan = PolarsFE.polars_partition_plan(
+    method="grouped",
+    fractions={"train": 0.75, "test": 0.25},
+    group_col="customer_id",
+    seed=123,
+    k=5,
+)
+
+grouped_fit = PolarsFE.polars_fit_partition_plan(data, grouped_plan)
+grouped_prepared = PolarsFE.polars_apply_partition_plan(data, grouped_fit)
+
+# Time split assigns earlier records to earlier partitions
+time_plan = PolarsFE.polars_partition_plan(
+    method="time",
+    fractions={"train": 0.7, "validation": 0.1, "test": 0.2},
+    date_col="event_date",
+    seed=123,
+    k=5,
+)
+
+time_fit = PolarsFE.polars_fit_partition_plan(data, time_plan)
+time_prepared = PolarsFE.polars_apply_partition_plan(data, time_fit)
+
+# Fold assignment can be used directly
+folds = PolarsFE.polars_create_folds(
+    data=data,
+    k=5,
+    target_col="target",
+    seed=123,
+)
+
+model_prep_result = PolarsFE.generate_polars_model_prep_artifacts(data, stratified_plan)
+print(model_prep_result["artifacts"]["partition_manifest"])
+print(model_prep_result["artifacts"]["fold_manifest"])
+print(model_prep_result["metadata"])
+
+print(PolarsFE.qa_polarsfe_vnext_model_prep())
+print(PolarsFE.qa_generate_polars_model_prep_artifacts())
+```
+
 # Feature Engineering Code Examples
 
 
